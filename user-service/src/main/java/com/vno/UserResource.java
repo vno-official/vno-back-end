@@ -39,6 +39,11 @@ public class UserResource {
 
     
     @GET
+    @Path("/test")
+    public Response test() {
+        return Response.ok("test").build();
+    }
+    @GET
     @Path("/me")
     public Response getMyInfo(@Context SecurityContext ctx) {
         String email = jwt.getName(); 

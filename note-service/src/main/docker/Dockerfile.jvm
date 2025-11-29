@@ -10,7 +10,7 @@ FROM eclipse-temurin:21-jre-alpine
 ENV JAVA_OPTS="-XX:MaxRAMPercentage=80.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager" \
     QUARKUS_DATASOURCE_REACTIVE_URL=vertx-reactive:postgresql://host.docker.internal:5432/vno_auths
 
-EXPOSE 8080
+EXPOSE 8082
 WORKDIR /work/app
 
 # Copy runtime artifacts from local build

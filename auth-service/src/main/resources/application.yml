@@ -1,6 +1,6 @@
 quarkus:
   http:
-    port: 8081
+    port: 8080
   smallrye-jwt:
     sign:
       key: "7nVyLZkIFSXx7e1t96VK3MVaGdqjaCqqIlvJ1kA1vdJ"
