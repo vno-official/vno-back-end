@@ -1,0 +1,12 @@
+quarkus:
+  hibernate-orm:
+    log:
+      sql: true
+    sql-load-script: import.sql
+    schema-management:
+      strategy: create
+  datasource:
+    username: vno_auth_2025
+    password: vno@auth-2025
+    reactive:
+      url: vertx-reactive:postgresql://localhost/vno_auths

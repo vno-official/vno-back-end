@@ -1,0 +1,20 @@
+quarkus:
+  application:
+    name: myservice
+  otel:
+    metrics:
+      enabled: true
+    logs:
+      enabled: true
+    exporter:
+      otlp:
+        traces:
+          headers: "Authorization=Bearer my_secret"
+  log:
+    console:
+      format: "%d{HH:mm:ss} %-5p traceId=%X{traceId}, parentId=%X{parentId}, spanId=%X{spanId}, sampled=%X{sampled} [%c{2.}] (%t) %s%e%n"
+
+"%test":
+  quarkus:
+    observability:
+      enabled: false

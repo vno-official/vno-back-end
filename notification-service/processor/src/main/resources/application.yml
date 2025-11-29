@@ -1,0 +1,17 @@
+"%dev":
+  quarkus:
+    http:
+      port: 8081
+kafka:
+  auto:
+    offset:
+      reset: earliest
+mp:
+  messaging:
+    incoming:
+      requests:
+        topic: quote-requests
+    outgoing:
+      quotes:
+        value:
+          serializer: io.quarkus.kafka.client.serialization.ObjectMapperSerializer

@@ -48,7 +48,7 @@ java {
 
 
 quarkus {
-    setFinalName("auth-service")
+    setFinalName("user-service")
 }
 
 tasks.withType<Test> {

@@ -511,3 +511,9 @@ vno
                         └─ FruitsEndpointTest.class
 
 ```
+
+
+build docker image
+```
+docker build -f src/main/docker/Dockerfile.jvm -t vno-auth-service:latest .
+```

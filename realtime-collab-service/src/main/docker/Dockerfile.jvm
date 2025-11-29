@@ -1,0 +1,21 @@
+# Prerequisite: Run "./gradlew build" locally before building this image.
+# This Dockerfile copies the pre-built application from the host environment.
+
+FROM eclipse-temurin:21-jre-alpine
+
+# Configure JVM options
+# Use 80% of container memory for heap
+# Use JBoss LogManager for Quarkus logging
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=80.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
+
+EXPOSE 8080
+WORKDIR /work/app
+
+# Copy runtime artifacts from local build
+COPY build/quarkus-app/lib /work/app/lib
+COPY build/quarkus-app/app /work/app/app
+COPY build/quarkus-app/quarkus /work/app/quarkus
+COPY build/quarkus-app/quarkus-run.jar /work/app/quarkus-run.jar
+
+# Set entrypoint
+ENTRYPOINT ["java", "-jar", "quarkus-run.jar"]

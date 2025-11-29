@@ -1,6 +1,7 @@
 .gradle/
 .qodo/
 build/
+!build/quarkus-app/
 target/
 .mvn/
 .idea/

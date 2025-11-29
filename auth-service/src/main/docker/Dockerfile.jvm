@@ -1,51 +1,23 @@
-# --- STAGE 1: BUILDER ---
-# Sử dụng image Gradle với JDK 21 để build ứng dụng.
-FROM gradle:8.6-jdk21-jammy AS builder
+# Prerequisite: Run "./gradlew build" locally before building this image.
+# This Dockerfile copies the pre-built application from the host environment.
 
-# Thiết lập thư mục làm việc bên trong container
-WORKDIR /app
+FROM eclipse-temurin:21-jre-alpine
 
-# Copy các file cần thiết cho Gradle
-# Tách các lệnh COPY để dễ dàng debug và xử lý lỗi I/O của BuildKit
+# Configure JVM options
+# Use 80% of container memory for heap
+# Use JBoss LogManager for Quarkus logging
+# Cấu hình DB URL trỏ về host.docker.internal để truy cập DB trên máy host (Windows)
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=80.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager" \
+    QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://host.docker.internal:5432/vno_auths
 
-# Copy các file cấu hình và wrapper
-COPY gradlew .
-COPY gradle/ gradle/
-COPY build.gradle.kts .
-COPY settings.gradle.kts .
-# File này chứa các biến như quarkusPluginVersion cần cho settings.gradle.kts
-COPY gradle.properties .  
-
-# Copy mã nguồn
-COPY src/ src/
-
-# Chạy lệnh build của Gradle.
-# Lệnh này sẽ tạo ra cấu trúc file runtime tối ưu (quarkus-app/) trong thư mục 'build'.
-# -x test: Bỏ qua kiểm thử để build nhanh hơn trong Docker, giả sử bạn đã chạy kiểm thử bên ngoài.
-RUN ./gradlew clean build -x test
-
-# --- STAGE 2: RUNNER ---
-# Sử dụng image JRE 21 tối thiểu để chạy ứng dụng, giúp giảm kích thước image.
-FROM eclipse-temurin:21-jre-alpine AS runner
-
-# Thiết lập biến môi trường cho việc tối ưu hóa JVM
-# Sử dụng LogManager của JBoss để tối ưu hóa logging của Quarkus
-ENV JAVA_OPTS="-XX:MaxRAMPercentage=80.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
-
-# Mở cổng mặc định của Quarkus
 EXPOSE 8080
-
-# Thiết lập thư mục làm việc cho ứng dụng
 WORKDIR /work/app
 
-# Copy các thành phần runtime từ Stage 1 (builder)
-# Các thành phần này được tạo ra trong /app/build/quarkus-app/
-COPY --from=builder /app/build/quarkus-app/lib /work/app/lib
-COPY --from=builder /app/build/quarkus-app/app /work/app/app
-# ĐÃ SỬA: Copy thư mục 'quarkus' chứa file quarkus-application.dat vào đúng vị trí ngang hàng với quarkus-run.jar
-COPY --from=builder /app/build/quarkus-app/app/quarkus /work/app/quarkus 
-COPY --from=builder /app/build/quarkus-app/quarkus-run.jar /work/app/quarkus-run.jar
-# ĐÃ XÓA DÒNG user-classes: Thư mục này không còn tồn tại trong cấu trúc build mới của Quarkus/Gradle.
+# Copy runtime artifacts from local build
+COPY build/quarkus-app/lib /work/app/lib
+COPY build/quarkus-app/app /work/app/app
+COPY build/quarkus-app/quarkus /work/app/quarkus
+COPY build/quarkus-app/quarkus-run.jar /work/app/quarkus-run.jar
 
-# Thiết lập điểm vào (Entry Point) để chạy ứng dụng Quarkus
+# Set entrypoint
 ENTRYPOINT ["java", "-jar", "quarkus-run.jar"]
