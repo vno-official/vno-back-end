@@ -1,0 +1,66 @@
+_format_version: "3.0"
+
+# VNO Backend Services - Kong Declarative Configuration for Docker Deployment
+# This file is used when all services run in Docker containers
+# Services communicate via Docker network using container names
+
+services:
+  # Auth Service - Port 8080
+  - name: auth-service
+    url: http://vno-auth-service:8080
+    routes:
+      - name: auth-service-route
+        paths:
+          - /api/auth
+        strip_path: false
+        preserve_host: false
+
+  # User Service - Port 8081
+  - name: user-service
+    url: http://vno-user-service:8081
+    routes:
+      - name: user-service-route
+        paths:
+          - /api/users
+        strip_path: false
+        preserve_host: false
+
+  # Note Service - Port 8082
+  - name: note-service
+    url: http://vno-note-service:8082
+    routes:
+      - name: note-service-route
+        paths:
+          - /api/notes
+        strip_path: false
+        preserve_host: false
+
+  # Realtime Collab Service - Port 8083
+  - name: realtime-collab-service
+    url: http://vno-realtime-collab-service:8083
+    routes:
+      - name: realtime-collab-service-route
+        paths:
+          - /api/collab
+        strip_path: false
+        preserve_host: false
+
+  # Notification Producer - Port 8084
+  - name: notification-producer
+    url: http://vno-notification-producer:8084
+    routes:
+      - name: notification-producer-route
+        paths:
+          - /api/notifications
+        strip_path: false
+        preserve_host: false
+
+  # Notification Processor - Port 8085
+  - name: notification-processor
+    url: http://vno-notification-processor:8085
+    routes:
+      - name: notification-processor-route
+        paths:
+          - /api/notifications/processor
+        strip_path: false
+        preserve_host: false

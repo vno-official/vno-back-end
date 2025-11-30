@@ -2,10 +2,10 @@ quarkus:
   http:
     port: 8081
   datasource:
-    password: vno@user-2025
+    password: npg_GMfXtR8H2nkK
+    username: neondb_owner
     jdbc:
-      url: jdbc:postgresql://localhost:5432/vno_users
-    username: vno_user_2025
+      url: jdbc:postgresql://ep-flat-feather-a1vmt3a1-pooler.ap-southeast-1.aws.neon.tech/vno-users
   smallrye-jwt:
     sign:
       key: 7nVyLZkIFSXx7e1t96VK3MVaGdqjaCqqIlvJ1kA1vdJ

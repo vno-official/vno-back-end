@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
 @Entity
-@Table(name = "app_user")
+@Table(name = "users")
 public class UserProfile extends PanacheEntityBase {
 
     @Id

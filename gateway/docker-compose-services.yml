@@ -1,0 +1,172 @@
+version: "3.8"
+
+# Complete VNO Backend Stack with Kong Gateway
+# This docker-compose file runs all services and Kong Gateway together
+# Usage: docker-compose -f gateway/docker-compose-services.yml up -d
+
+networks:
+  vno-network:
+    driver: bridge
+
+services:
+  # ==================== VNO Services ====================
+  
+  # Auth Service - Port 8080
+  vno-auth-service:
+    image: vno-auth-service:latest
+    container_name: vno-auth-service
+    networks:
+      - vno-network
+    ports:
+      - "8080:8080"
+    environment:
+      QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://host.docker.internal:5432/vno_auths
+      JAVA_OPTS: "-XX:MaxRAMPercentage=80.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/q/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # User Service - Port 8081
+  vno-user-service:
+    image: vno-user-service:latest
+    container_name: vno-user-service
+    networks:
+      - vno-network
+    ports:
+      - "8081:8081"
+    environment:
+      QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://host.docker.internal:5432/vno_users
+      JAVA_OPTS: "-XX:MaxRAMPercentage=80.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8081/q/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Note Service - Port 8082
+  vno-note-service:
+    image: vno-note-service:latest
+    container_name: vno-note-service
+    networks:
+      - vno-network
+    ports:
+      - "8082:8082"
+    environment:
+      QUARKUS_DATASOURCE_REACTIVE_URL: vertx-reactive:postgresql://host.docker.internal:5432/vno_notes
+      JAVA_OPTS: "-XX:MaxRAMPercentage=80.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8082/q/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Realtime Collab Service - Port 8083
+  vno-realtime-collab-service:
+    image: vno-realtime-collab-service:latest
+    container_name: vno-realtime-collab-service
+    networks:
+      - vno-network
+    ports:
+      - "8083:8083"
+    environment:
+      JAVA_OPTS: "-XX:MaxRAMPercentage=80.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8083/q/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Notification Producer - Port 8084
+  vno-notification-producer:
+    image: vno-notification-producer:latest
+    container_name: vno-notification-producer
+    networks:
+      - vno-network
+    ports:
+      - "8084:8084"
+    environment:
+      JAVA_OPTS: "-XX:MaxRAMPercentage=80.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8084/q/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Notification Processor - Port 8085
+  vno-notification-processor:
+    image: vno-notification-processor:latest
+    container_name: vno-notification-processor
+    networks:
+      - vno-network
+    ports:
+      - "8085:8085"
+    environment:
+      JAVA_OPTS: "-XX:MaxRAMPercentage=80.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8085/q/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==================== Kong Gateway ====================
+  
+  kong:
+    image: kong/kong-gateway:3.8.0.0
+    container_name: vno-kong-gateway
+    networks:
+      - vno-network
+    environment:
+      # DB-less mode - uses declarative configuration
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /usr/local/kong/declarative/kong.yml
+      
+      # Admin API configuration
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      KONG_ADMIN_GUI_URL: http://localhost:8002
+      KONG_ADMIN_GUI_LISTEN: 0.0.0.0:8002
+      
+      # Proxy configuration
+      KONG_PROXY_LISTEN: 0.0.0.0:8000, 0.0.0.0:8443 ssl
+      
+      # Logging
+      KONG_LOG_LEVEL: info
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+    
+    volumes:
+      # Mount declarative configuration file for Docker deployment
+      - ./kong-docker.yml:/usr/local/kong/declarative/kong.yml:ro
+    
+    ports:
+      - "8000:8000"   # Proxy HTTP
+      - "8443:8443"   # Proxy HTTPS
+      - "8001:8001"   # Admin API HTTP
+      - "8444:8444"   # Admin API HTTPS
+      - "8002:8002"   # Admin GUI HTTP
+      - "8445:8445"   # Admin GUI HTTPS
+    
+    depends_on:
+      - vno-auth-service
+      - vno-user-service
+      - vno-note-service
+      - vno-realtime-collab-service
+      - vno-notification-producer
+      - vno-notification-processor
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

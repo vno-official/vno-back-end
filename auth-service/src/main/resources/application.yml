@@ -9,10 +9,10 @@ quarkus:
     #   key-location: privateKey.pem   # RS256 (production)
 
   datasource:
-    username: vno_auth_2025
-    password: "vno@auth-2025"
+    username: neondb_owner
+    password: "npg_GMfXtR8H2nkK"
     jdbc:
-      url: jdbc:postgresql://localhost:5432/vno_auths
+      url: jdbc:postgresql://ep-flat-feather-a1vmt3a1-pooler.ap-southeast-1.aws.neon.tech/vno-auth
 
 # mp.jwt config
 mp:
@@ -27,7 +27,7 @@ mp:
 #     resources:
 #       includes: publicKey.pem
 
-# quarkus:
-#   hibernate-orm:
-#     schema-management:
-#       strategy: create
+quarkus:
+  hibernate-orm:
+    schema-management:
+      strategy: update
