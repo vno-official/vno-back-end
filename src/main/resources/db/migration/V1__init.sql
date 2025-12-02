@@ -1,0 +1,3 @@
+-- Flyway baseline migration (Phase 0)
+-- You can add base tables in Phase 1.
+-- This empty migration ensures Flyway is wired correctly.

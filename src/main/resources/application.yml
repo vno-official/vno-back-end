@@ -1,0 +1,33 @@
+# Quarkus configuration (YAML)
+quarkus:
+  http:
+    port: ${PORT:8080}
+    root-path: "/"
+    cors:
+      origins: "*"
+      headers: "accept, authorization, content-type, x-requested-with"
+      methods: "GET, POST, PUT, DELETE, OPTIONS"
+  smallrye-openapi:
+    path: "/q/openapi"
+  swagger-ui:
+    always-include: true
+  smallrye-health:
+    root-path: "/q/health"
+  log:
+    console:
+      json: false
+  datasource:
+    db-kind: postgresql
+    jdbc:
+      url: ${DATABASE_URL:}
+  flyway:
+    migrate-at-start: false
+  redis:
+    hosts: ${REDIS_URL:}
+
+# App domain for subdomain parsing
+app:
+  domain: ${APP_DOMAIN:vno.com}
+
+# Enable CORS (flattened key)
+"quarkus.http.cors": true
