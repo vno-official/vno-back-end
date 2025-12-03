@@ -1,0 +1,32 @@
+# Build artifacts
+build/
+bin/
+.gradle/
+*.log
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation (not needed in container)
+*.md
+CHECKLIST.md
+GOAL.md
+README.md
+
+# Test files
+src/test/
+
+# Fly.io config (already in context)
+fly.toml

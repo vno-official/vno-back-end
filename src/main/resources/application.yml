@@ -18,8 +18,14 @@ quarkus:
       json: false
   datasource:
     db-kind: postgresql
+    username: ${DB_USERNAME:neondb_owner}
+    password: ${DB_PASSWORD:npg_GMfXtR8H2nkK}
     jdbc:
-      url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/vno}
+      url: ${DATABASE_URL:jdbc:postgresql://ep-flat-feather-a1vmt3a1-pooler.ap-southeast-1.aws.neon.tech/vno?sslmode=require&channelBinding=require}
+      max-size: 20
+      min-size: 5
+      acquisition-timeout: 10s
+      idle-removal-interval: 5m
   flyway:
     migrate-at-start: true
   redis:
@@ -31,11 +37,11 @@ quarkus:
   oidc:
     enabled: true
     auth-server-url: https://accounts.google.com
-    client-id: ${GOOGLE_CLIENT_ID:}
-    client-secret: ${GOOGLE_CLIENT_SECRET:}
+    client-id: ${GOOGLE_CLIENT_ID:MY_CLIENT_ID}
+    client-secret: ${GOOGLE_CLIENT_SECRET:MY_CLIENT_SECRET}
     application-type: web-app
     credentials:
-      secret: ${GOOGLE_CLIENT_SECRET:}
+      secret: ${GOOGLE_CLIENT_SECRET:MY_CLIENT_SECRET}
 
 # JWT Configuration
 mp:
@@ -61,7 +67,7 @@ app:
 
 # Resend API
 resend:
-  api-key: ${RESEND_API_KEY:}
+  api-key: ${RESEND_API_KEY:re_dev_placeholder_key}
   from-email: ${RESEND_FROM_EMAIL:noreply@vno.com}
 
 # Enable CORS (flattened key)
