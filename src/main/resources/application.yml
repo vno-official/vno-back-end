@@ -48,6 +48,9 @@ quarkus:
   hibernate-orm:
     database:
       generation: none
+    mapping:
+      format:
+        global: ignore
 
   # OIDC for Google OAuth
   oidc:

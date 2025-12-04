@@ -7,6 +7,7 @@ import java.time.Instant;
 
 @Entity
 @Table(name = "workspaces")
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Workspace extends TenantEntity {
 
     @Column(nullable = false)
@@ -26,6 +27,7 @@ public class Workspace extends TenantEntity {
 
     @ManyToOne
     @JoinColumn(name = "created_by")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     public User createdBy;
 
     @Column(name = "created_at", nullable = false)
@@ -35,10 +37,12 @@ public class Workspace extends TenantEntity {
     public Instant deletedAt;
 
     // Reactive repository methods
+    @com.fasterxml.jackson.annotation.JsonIgnore
     public static Uni<Workspace> findByIdAndOrg(Long id, Long orgId) {
         return find("id = ?1 and organizationId = ?2 and deletedAt is null", id, orgId).firstResult();
     }
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     public static Uni<Workspace> findPrivateWorkspace(Long orgId, Long userId) {
         return find("organizationId = ?1 and createdBy.id = ?2 and isSystem = true and name = 'Private' and deletedAt is null", 
                     orgId, userId).firstResult();

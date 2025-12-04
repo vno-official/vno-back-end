@@ -6,10 +6,9 @@ import com.vno.core.entity.User;
 import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
 import io.quarkus.security.Authenticated;
 import io.smallrye.mutiny.Uni;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 import jakarta.inject.Inject;
-import jakarta.json.Json;
-import jakarta.json.JsonArray;
-import jakarta.json.JsonObject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -45,10 +44,10 @@ public class BlockResource {
     @POST
     @WithTransaction
     public Uni<Response> createBlock(JsonObject payload) {
-        Long pageId = payload.getJsonNumber("pageId").longValue();
+        Long pageId = payload.getLong("pageId");
         String type = payload.getString("type");
-        String content = payload.getString("content", "{}");
-        Integer orderIndex = payload.getInt("orderIndex", 0);
+        JsonObject content = payload.getJsonObject("content");
+        Integer orderIndex = payload.getInteger("orderIndex", 0);
         Long userId = Long.parseLong(jwt.getSubject());
 
         return Page.<Page>findById(pageId)
@@ -58,7 +57,7 @@ public class BlockResource {
                     Block block = new Block();
                     block.page = page;
                     block.type = Block.BlockType.valueOf(type.toUpperCase());
-                    block.content = content;
+                    block.content = content.toString();
                     block.orderIndex = orderIndex;
                     block.createdBy = user;
                     return block;
@@ -82,7 +81,7 @@ public class BlockResource {
                     block.content = payload.getString("content");
                 }
                 if (payload.containsKey("orderIndex")) {
-                    block.orderIndex = payload.getInt("orderIndex");
+                    block.orderIndex = payload.getInteger("orderIndex");
                 }
                 if (payload.containsKey("type")) {
                     block.type = Block.BlockType.valueOf(payload.getString("type").toUpperCase());
@@ -99,7 +98,7 @@ public class BlockResource {
     @Path("/batch")
     @WithTransaction
     public Uni<Response> batchSaveBlocks(JsonObject payload) {
-        Long pageId = payload.getJsonNumber("pageId").longValue();
+        Long pageId = payload.getLong("pageId");
         JsonArray blocksArray = payload.getJsonArray("blocks");
         Long userId = Long.parseLong(jwt.getSubject());
 
@@ -129,9 +128,7 @@ public class BlockResource {
                 )
             )
             .map(v -> Response.ok()
-                .entity(Json.createObjectBuilder()
-                    .add("message", "Blocks saved successfully")
-                    .build())
+                .entity(new JsonObject().put("message", "Blocks saved successfully"))
                 .build());
     }
 

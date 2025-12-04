@@ -5,10 +5,9 @@ import com.vno.core.entity.User;
 import com.vno.core.entity.UserOrganization;
 import io.smallrye.jwt.build.Jwt;
 import io.smallrye.mutiny.Uni;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.json.Json;
-import jakarta.json.JsonArrayBuilder;
-import jakarta.json.JsonObjectBuilder;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import java.time.Duration;
 import java.util.HashSet;
@@ -42,13 +41,13 @@ public class JwtService {
 
     private String buildJwtToken(User user, Long currentOrgId, Role role, List<UserOrganization> userOrgs) {
         // Build orgs array for org switcher
-        JsonArrayBuilder orgsArray = Json.createArrayBuilder();
+        JsonArray orgsArray = new JsonArray();
         for (UserOrganization uo : userOrgs) {
-            JsonObjectBuilder orgObj = Json.createObjectBuilder()
-                .add("id", uo.organization.id)
-                .add("name", uo.organization.name)
-                .add("subdomain", uo.organization.slug)
-                .add("role", uo.role.name());
+            JsonObject orgObj = new JsonObject()
+                .put("id", uo.organization.id)
+                .put("name", uo.organization.name)
+                .put("subdomain", uo.organization.slug)
+                .put("role", uo.role.name());
             orgsArray.add(orgObj);
         }
 
@@ -63,7 +62,7 @@ public class JwtService {
                 .claim("name", user.name)
                 .claim("org_id", currentOrgId)
                 .claim("role", role.name())
-                .claim("orgs", orgsArray.build())
+                .claim("orgs", orgsArray)
                 .groups(groups)
                 .expiresIn(Duration.ofHours(expiryHours))
                 .sign();  // Sign with configured private key

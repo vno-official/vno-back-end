@@ -7,14 +7,17 @@ import java.time.Instant;
 
 @Entity
 @Table(name = "pages")
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Page extends TenantEntity {
 
     @ManyToOne
     @JoinColumn(name = "workspace_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     public Workspace workspace;
 
     @ManyToOne
     @JoinColumn(name = "parent_page_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     public Page parentPage;
 
     @Column(nullable = false)
@@ -37,6 +40,7 @@ public class Page extends TenantEntity {
 
     @ManyToOne
     @JoinColumn(name = "created_by")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     public User createdBy;
 
     @Column(name = "created_at", nullable = false)
@@ -54,6 +58,7 @@ public class Page extends TenantEntity {
     }
 
     // Reactive repository methods
+    @com.fasterxml.jackson.annotation.JsonIgnore
     public static Uni<Page> findByIdAndOrg(Long id, Long orgId) {
         return find("id = ?1 and organizationId = ?2 and deletedAt is null", id, orgId).firstResult();
     }

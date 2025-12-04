@@ -2,28 +2,35 @@ package com.vno.core.entity;
 
 import com.vno.core.tenant.TenantEntity;
 import io.smallrye.mutiny.Uni;
+import io.vertx.core.json.JsonObject;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.List;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 @Entity
 @Table(name = "blocks")
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Block extends TenantEntity {
     // organizationId is inherited from TenantEntity - DO NOT duplicate
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "page_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     public Page page;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_block_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     public Block parentBlock;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     public BlockType type;
 
-    @Column(columnDefinition = "jsonb", nullable = false)
+@JdbcTypeCode(SqlTypes.JSON)
     public String content = "{}";
 
     @Column(name = "order_index", nullable = false)
@@ -31,6 +38,7 @@ public class Block extends TenantEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     public User createdBy;
 
     @Column(name = "created_at")
@@ -54,14 +62,17 @@ public class Block extends TenantEntity {
     }
 
     // Reactive finder methods
+    @com.fasterxml.jackson.annotation.JsonIgnore
     public static Uni<List<Block>> findByPage(Long pageId) {
         return list("page.id = ?1 order by orderIndex", pageId);
     }
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     public static Uni<Void> deleteByPage(Long pageId) {
         return delete("page.id", pageId).replaceWithVoid();
     }
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     public static Uni<Integer> getMaxOrderIndex(Long pageId) {
         return find("select max(orderIndex) from Block where page.id = ?1", pageId)
             .project(Integer.class)

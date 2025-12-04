@@ -5,8 +5,8 @@ import com.vno.auth.dto.RegisterRequest;
 import com.vno.auth.service.AuthService;
 import io.quarkus.security.Authenticated;
 import io.smallrye.mutiny.Uni;
+import io.vertx.core.json.JsonObject;
 import jakarta.inject.Inject;
-import jakarta.json.Json;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -32,10 +32,9 @@ public class AuthResource {
     public Uni<Response> register(@Valid RegisterRequest request) {
         return authService.registerUser(request.email, request.password, request.name)
             .map(token -> Response.ok()
-                .entity(Json.createObjectBuilder()
-                    .add("token", token)
-                    .add("message", "Registration successful")
-                    .build())
+                .entity(new JsonObject()
+                    .put("token", token)
+                    .put("message", "Registration successful"))
                 .build());
     }
 
@@ -47,9 +46,8 @@ public class AuthResource {
     public Uni<Response> login(@Valid LoginRequest request) {
         return authService.loginUser(request.email, request.password)
             .map(token -> Response.ok()
-                .entity(Json.createObjectBuilder()
-                    .add("token", token)
-                    .build())
+                .entity(new JsonObject()
+                    .put("token", token))
                 .build());
     }
 
@@ -67,9 +65,8 @@ public class AuthResource {
         Long userId = Long.parseLong(jwt.getSubject());
         return authService.switchOrganization(userId, orgId)
             .map(token -> Response.ok()
-                .entity(Json.createObjectBuilder()
-                    .add("token", token)
-                    .build())
+                .entity(new JsonObject()
+                    .put("token", token))
                 .build());
     }
 
@@ -86,12 +83,11 @@ public class AuthResource {
         String currentRole = jwt.getClaim("role");
 
         return Response.ok()
-            .entity(Json.createObjectBuilder()
-                .add("user_id", userId)
-                .add("email", email)
-                .add("current_org_id", currentOrgId)
-                .add("current_role", currentRole)
-                .build())
+            .entity(new JsonObject()
+                .put("user_id", userId)
+                .put("email", email)
+                .put("current_org_id", currentOrgId)
+                .put("current_role", currentRole))
             .build();
     }
 }
