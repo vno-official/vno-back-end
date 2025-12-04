@@ -1,12 +1,9 @@
 package com.vno.org.service;
 
-import com.vno.core.entity.Membership;
-import com.vno.core.entity.Organization;
-import com.vno.core.entity.Role;
-import com.vno.core.entity.User;
-import com.vno.core.entity.Workspace;
+import com.vno.core.entity.*;
+import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
+import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.transaction.Transactional;
 import java.util.Random;
 
 @ApplicationScoped
@@ -14,39 +11,65 @@ public class OrgBootstrapService {
 
     private static final Random RANDOM = new Random();
 
-    @Transactional
-    public Organization bootstrapOrganization(User user) {
-        // Generate org slug from email domain
+    @WithTransaction
+    public Uni<Organization> bootstrapOrganization(User user) {
         String slug = generateSlugFromEmail(user.email);
         
-        // Ensure slug is unique
-        slug = ensureUniqueSlug(slug);
+        return ensureUniqueSlug(slug)
+            .flatMap(uniqueSlug -> {
+                Organization org = new Organization();
+                org.name = uniqueSlug.substring(0, 1).toUpperCase() + uniqueSlug.substring(1);
+                org.slug = uniqueSlug;
+                
+                return org.persistAndFlush()
+                    .onItem().castTo(Organization.class)
+                    .flatMap(savedOrg -> {
+                        UserOrganization userOrg = new UserOrganization();
+                        userOrg.user = user;
+                        userOrg.organization = savedOrg;
+                        userOrg.role = Role.OWNER;
+                        
+                        return userOrg.persistAndFlush()
+                            .flatMap(uo -> createPrivateWorkspace(savedOrg, user))
+                            .replaceWith(savedOrg);
+                    });
+            });
+    }
+
+    private Uni<Workspace> createPrivateWorkspace(Organization org, User user) {
+        Workspace privateWorkspace = new Workspace();
+        privateWorkspace.organizationId = org.id;
+        privateWorkspace.name = "Private";
+        privateWorkspace.iconEmoji = "🔒";
+        privateWorkspace.defaultPermission = "private";
+        privateWorkspace.isSystem = true;
+        privateWorkspace.createdBy = user;
         
-        // Create organization
-        Organization org = new Organization();
-        org.name = slug.substring(0, 1).toUpperCase() + slug.substring(1);
-        org.slug = slug;
-        org.persist();
+        return privateWorkspace.persistAndFlush()
+            .onItem().castTo(Workspace.class)
+            .flatMap(ws -> createWelcomePage(org, ws, user))
+            .replaceWith(privateWorkspace);
+    }
+
+    private Uni<Page> createWelcomePage(Organization org, Workspace workspace, User user) {
+        Page welcomePage = new Page();
+        welcomePage.organizationId = org.id;
+        welcomePage.workspace = workspace;
+        welcomePage.title = "Welcome to VNO";
+        welcomePage.iconEmoji = "👋";
+        welcomePage.createdBy = user;
         
-        // Create OWNER membership
-        Membership membership = new Membership();
-        membership.user = user;
-        membership.organization = org;
-        membership.role = Role.OWNER;
-        membership.persist();
-        
-        // Create default workspace
-        Workspace workspace = new Workspace();
-        workspace.organizationId = org.id;
-        workspace.name = "General";
-        workspace.createdBy = user;
-        workspace.persist();
-        
-        return org;
+        // Persist first, then update path with generated ID
+        return welcomePage.persistAndFlush()
+            .chain(savedEntity -> {
+                Page savedPage = (Page) savedEntity;
+                savedPage.path = "." + savedPage.id + ".";
+                return savedPage.persistAndFlush();
+            })
+            .onItem().castTo(Page.class);
     }
 
     private String generateSlugFromEmail(String email) {
-        // Extract domain from email (e.g., user@acme.com -> acme)
         int atIndex = email.indexOf('@');
         if (atIndex > 0) {
             String domain = email.substring(atIndex + 1);
@@ -56,17 +79,16 @@ public class OrgBootstrapService {
             }
             return domain.toLowerCase();
         }
-        // Fallback: use part before @
         return email.substring(0, atIndex > 0 ? atIndex : email.length()).toLowerCase();
     }
 
-    private String ensureUniqueSlug(String baseSlug) {
-        String slug = baseSlug;
-        int attempts = 0;
-        while (Organization.slugExists(slug) && attempts < 10) {
-            slug = baseSlug + RANDOM.nextInt(1000);
-            attempts++;
-        }
-        return slug;
+    private Uni<String> ensureUniqueSlug(String baseSlug) {
+        return Organization.slugExists(baseSlug)
+            .map(exists -> {
+                if (exists) {
+                    return baseSlug + RANDOM.nextInt(1000);
+                }
+                return baseSlug;
+            });
     }
 }

@@ -9,6 +9,7 @@ public class TenantContext {
     }
     
     public static Long getOrganizationId() {
+        System.out.println(currentOrganizationId.get());
         return currentOrganizationId.get();
     }
     

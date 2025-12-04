@@ -1,9 +1,9 @@
 package com.vno.core.entity;
 
-import io.quarkus.hibernate.orm.panache.PanacheEntity;
+import io.quarkus.hibernate.reactive.panache.PanacheEntity;
+import io.smallrye.mutiny.Uni;
 import jakarta.persistence.*;
 import java.time.Instant;
-import java.util.UUID;
 
 @Entity
 @Table(name = "invitations")
@@ -16,9 +16,8 @@ public class Invitation extends PanacheEntity {
     @Column(nullable = false)
     public String email;
 
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    public Role role = Role.MEMBER;
+    public String role = "MEMBER";
 
     @Column(nullable = false, unique = true)
     public String token;
@@ -36,24 +35,14 @@ public class Invitation extends PanacheEntity {
     @Column(name = "created_at", nullable = false)
     public Instant createdAt = Instant.now();
 
-    // Helper methods
-    public static Invitation createInvitation(Organization org, String email, Role role, User invitedBy, int daysValid) {
-        Invitation invitation = new Invitation();
-        invitation.organization = org;
-        invitation.email = email;
-        invitation.role = role;
-        invitation.invitedBy = invitedBy;
-        invitation.token = UUID.randomUUID().toString();
-        invitation.expiresAt = Instant.now().plusSeconds(daysValid * 24 * 60 * 60);
-        return invitation;
+    // Reactive repository methods
+    public static Uni<Invitation> findByToken(String token) {
+        return find("token = ?1 and acceptedAt is null and expiresAt > ?2",
+                token, Instant.now()).firstResult();
     }
 
-    public static Invitation findByToken(String token) {
-        return find("token = ?1 and acceptedAt is null and expiresAt > ?2", 
-                    token, Instant.now()).firstResult();
-    }
-
-    public boolean isValid() {
-        return acceptedAt == null && expiresAt.isAfter(Instant.now());
+    public static Uni<Void> deleteExpired() {
+        return delete("expiresAt < ?1 and acceptedAt is null", Instant.now())
+            .replaceWithVoid();
     }
 }

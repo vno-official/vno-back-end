@@ -1,6 +1,7 @@
 package com.vno.core.entity;
 
 import com.vno.core.tenant.TenantEntity;
+import io.smallrye.mutiny.Uni;
 import jakarta.persistence.*;
 import java.time.Instant;
 
@@ -20,6 +21,9 @@ public class Workspace extends TenantEntity {
     @Column(name = "default_permission")
     public String defaultPermission = "organization";
 
+    @Column(name = "is_system")
+    public Boolean isSystem = false;
+
     @ManyToOne
     @JoinColumn(name = "created_by")
     public User createdBy;
@@ -30,8 +34,17 @@ public class Workspace extends TenantEntity {
     @Column(name = "deleted_at")
     public Instant deletedAt;
 
-    // Repository methods
-    public static Workspace findByIdAndOrg(Long id, Long orgId) {
+    // Reactive repository methods
+    public static Uni<Workspace> findByIdAndOrg(Long id, Long orgId) {
         return find("id = ?1 and organizationId = ?2 and deletedAt is null", id, orgId).firstResult();
+    }
+
+    public static Uni<Workspace> findPrivateWorkspace(Long orgId, Long userId) {
+        return find("organizationId = ?1 and createdBy.id = ?2 and isSystem = true and name = 'Private' and deletedAt is null", 
+                    orgId, userId).firstResult();
+    }
+
+    public boolean isDeletable() {
+        return !Boolean.TRUE.equals(isSystem);
     }
 }

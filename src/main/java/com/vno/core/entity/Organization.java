@@ -1,8 +1,10 @@
 package com.vno.core.entity;
 
-import io.quarkus.hibernate.orm.panache.PanacheEntity;
+import io.quarkus.hibernate.reactive.panache.PanacheEntity;
+import io.smallrye.mutiny.Uni;
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.util.List;
 
 @Entity
 @Table(name = "organizations")
@@ -29,12 +31,33 @@ public class Organization extends PanacheEntity {
     @Column(name = "deleted_at")
     public Instant deletedAt;
 
-    // Repository methods
-    public static Organization findBySlug(String slug) {
+    // Reactive repository methods
+    public static Uni<Organization> findBySlug(String slug) {
         return find("slug = ?1 and deletedAt is null", slug).firstResult();
     }
 
-    public static boolean slugExists(String slug) {
-        return count("slug = ?1 and deletedAt is null", slug) > 0;
+    public static Uni<Boolean> slugExists(String slug) {
+        return count("slug = ?1 and deletedAt is null", slug)
+            .map(count -> count > 0);
+    }
+
+    // Multi-org support methods (reactive)
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    public Uni<Role> getUserRole(Long userId) {
+        return UserOrganization.findRoleByUserAndOrg(userId, this.id);
+    }
+
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    public Uni<List<UserOrganization>> getMembers() {
+        return UserOrganization.<UserOrganization>find(
+            "SELECT uo FROM UserOrganization uo " +
+            "JOIN FETCH uo.user " +
+            "WHERE uo.organization.id = ?1", this.id
+        ).list();
+    }
+
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    public Uni<Boolean> hasUser(Long userId) {
+        return UserOrganization.userBelongsToOrg(userId, this.id);
     }
 }

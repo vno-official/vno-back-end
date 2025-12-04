@@ -1,6 +1,7 @@
 package com.vno.core.entity;
 
 import com.vno.core.tenant.TenantEntity;
+import io.smallrye.mutiny.Uni;
 import jakarta.persistence.*;
 import java.time.Instant;
 
@@ -52,8 +53,8 @@ public class Page extends TenantEntity {
         this.updatedAt = Instant.now();
     }
 
-    // Repository methods
-    public static Page findByIdAndOrg(Long id, Long orgId) {
+    // Reactive repository methods
+    public static Uni<Page> findByIdAndOrg(Long id, Long orgId) {
         return find("id = ?1 and organizationId = ?2 and deletedAt is null", id, orgId).firstResult();
     }
 

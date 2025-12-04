@@ -22,9 +22,14 @@ dependencies {
     implementation("io.quarkus:quarkus-rest")
     implementation("io.quarkus:quarkus-rest-jackson")
     implementation("io.quarkus:quarkus-smallrye-openapi")
-    implementation("io.quarkus:quarkus-hibernate-orm-panache")
-    implementation("io.quarkus:quarkus-jdbc-postgresql")
+    
+    // Reactive Hibernate instead of ORM
+    implementation("io.quarkus:quarkus-hibernate-reactive-panache")
+    implementation("io.quarkus:quarkus-reactive-pg-client")
+    implementation("io.quarkus:quarkus-jdbc-postgresql") // Still needed for Flyway migrations
     implementation("io.quarkus:quarkus-flyway")
+    implementation("io.quarkus:quarkus-vertx")
+    
     implementation("io.quarkus:quarkus-redis-client")
     implementation("io.quarkus:quarkus-smallrye-health")
     implementation("io.quarkus:quarkus-micrometer")
@@ -45,6 +50,9 @@ dependencies {
 
     // Validation
     implementation("io.quarkus:quarkus-hibernate-validator")
+    
+    // BCrypt for password hashing
+    implementation("org.mindrot:jbcrypt:0.4")
 
     testImplementation("io.quarkus:quarkus-junit5")
     testImplementation("io.rest-assured:rest-assured")

@@ -1,6 +1,6 @@
 package com.vno.core.tenant;
 
-import io.quarkus.hibernate.orm.panache.PanacheEntity;
+import io.quarkus.hibernate.reactive.panache.PanacheEntity;
 import jakarta.persistence.*;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterDef;
@@ -16,6 +16,7 @@ public abstract class TenantEntity extends PanacheEntity {
 
     @PrePersist
     public void setOrganizationIdFromContext() {
+        System.out.println("123123 + " + this.toString());
         if (this.organizationId == null) {
             this.organizationId = TenantContext.getOrganizationId();
         }

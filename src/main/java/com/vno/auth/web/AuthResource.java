@@ -1,20 +1,17 @@
 package com.vno.auth.web;
 
-import com.vno.auth.dto.AuthResponse;
-import com.vno.auth.dto.MagicLinkRequest;
-import com.vno.auth.service.EmailService;
-import com.vno.auth.service.JwtService;
-import com.vno.auth.service.MagicLinkService;
-import com.vno.core.entity.Membership;
-import com.vno.core.entity.Organization;
-import com.vno.core.entity.User;
-import com.vno.org.service.OrgBootstrapService;
+import com.vno.auth.dto.LoginRequest;
+import com.vno.auth.dto.RegisterRequest;
+import com.vno.auth.service.AuthService;
+import io.quarkus.security.Authenticated;
+import io.smallrye.mutiny.Uni;
 import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
+import jakarta.json.Json;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import org.eclipse.microprofile.jwt.JsonWebToken;
 
 @Path("/api/auth")
 @Produces(MediaType.APPLICATION_JSON)
@@ -22,78 +19,79 @@ import jakarta.ws.rs.core.Response;
 public class AuthResource {
 
     @Inject
-    MagicLinkService magicLinkService;
+    AuthService authService;
 
     @Inject
-    EmailService emailService;
+    JsonWebToken jwt;
 
-    @Inject
-    JwtService jwtService;
-
-    @Inject
-    OrgBootstrapService orgBootstrapService;
-
+    /**
+     * Register new user with username/password
+     */
     @POST
-    @Path("/magic-link")
-    public Response requestMagicLink(@Valid MagicLinkRequest request) {
-        String token = magicLinkService.generateToken(request.email);
-        emailService.sendMagicLink(request.email, token);
-        
-        return Response.ok()
-            .entity("{\"message\":\"Magic link sent to " + request.email + "\"}")
-            .build();
+    @Path("/register")
+    public Uni<Response> register(@Valid RegisterRequest request) {
+        return authService.registerUser(request.email, request.password, request.name)
+            .map(token -> Response.ok()
+                .entity(Json.createObjectBuilder()
+                    .add("token", token)
+                    .add("message", "Registration successful")
+                    .build())
+                .build());
     }
 
+    /**
+     * Login with username/password
+     */
+    @POST
+    @Path("/login")
+    public Uni<Response> login(@Valid LoginRequest request) {
+        return authService.loginUser(request.email, request.password)
+            .map(token -> Response.ok()
+                .entity(Json.createObjectBuilder()
+                    .add("token", token)
+                    .build())
+                .build());
+    }
+
+    /**
+     * Switch to different organization - returns new JWT
+     */
+    @POST
+    @Path("/switch-org")
+    @Authenticated
+    public Uni<Response> switchOrganization(@QueryParam("orgId") Long orgId) {
+        if (orgId == null) {
+            throw new BadRequestException("orgId is required");
+        }
+
+        Long userId = Long.parseLong(jwt.getSubject());
+        return authService.switchOrganization(userId, orgId)
+            .map(token -> Response.ok()
+                .entity(Json.createObjectBuilder()
+                    .add("token", token)
+                    .build())
+                .build());
+    }
+
+    /**
+     * Get current user info (for testing)
+     */
     @GET
-    @Path("/callback")
-    @Transactional
-    public Response callback(@QueryParam("token") String token) {
-        if (token == null || token.isBlank()) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                .entity("{\"error\":\"Token is required\"}")
-                .build();
-        }
+    @Path("/me")
+    @Authenticated
+    public Response getCurrentUser() {
+        Long userId = Long.parseLong(jwt.getSubject());
+        String email = jwt.getClaim("email");
+        Long currentOrgId = jwt.getClaim("org_id");
+        String currentRole = jwt.getClaim("role");
 
-        String email = magicLinkService.validateToken(token);
-        if (email == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                .entity("{\"error\":\"Invalid or expired token\"}")
-                .build();
-        }
-
-        // Find or create user
-        User user = User.findByEmail(email);
-        boolean isNewUser = (user == null);
-        
-        if (isNewUser) {
-            user = new User();
-            user.email = email;
-            user.name = email.split("@")[0];
-            user.persist();
-        }
-
-        // Find or create organization
-        Membership membership = Membership.find("user.id = ?1", user.id).firstResult();
-        Organization org;
-        
-        if (membership == null) {
-            // New user - bootstrap organization
-            org = orgBootstrapService.bootstrapOrganization(user);
-        } else {
-            org = membership.organization;
-        }
-
-        // Generate JWT
-        String jwtToken = jwtService.generateToken(
-            user.id,
-            user.email,
-            user.name,
-            org.id,
-            membership != null ? membership.role.name() : "OWNER"
-        );
-
-        // Return auth response
-        AuthResponse response = AuthResponse.create(jwtToken, user, org);
-        return Response.ok(response).build();
+        return Response.ok()
+            .entity(Json.createObjectBuilder()
+                .add("user_id", userId)
+                .add("email", email)
+                .add("current_org_id", currentOrgId)
+                .add("current_role", currentRole)
+                .build())
+            .build();
     }
 }
