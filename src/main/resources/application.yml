@@ -82,7 +82,8 @@ mp:
 app:
   domain: ${APP_DOMAIN:vno.com}
   jwt:
-    expiry-hours: 168
+    access-token-expiry-minutes: 15  # Short-lived access tokens (15 minutes)
+    refresh-token-expiry-days: 7     # Long-lived refresh tokens (7 days)
 
 # Resend Email Service Configuration
 resend:

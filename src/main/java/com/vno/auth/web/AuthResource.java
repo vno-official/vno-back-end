@@ -2,6 +2,7 @@ package com.vno.auth.web;
 
 import com.vno.auth.dto.ChangePasswordRequest;
 import com.vno.auth.dto.LoginRequest;
+import com.vno.auth.dto.RefreshTokenRequest;
 import com.vno.auth.dto.RegisterRequest;
 import com.vno.auth.dto.RequestPasswordResetRequest;
 import com.vno.auth.dto.ResetPasswordRequest;
@@ -40,11 +41,7 @@ public class AuthResource {
     @Path("/register")
     public Uni<Response> register(@Valid RegisterRequest request) {
         return authService.registerUser(request.email, request.password, request.name)
-            .map(token -> Response.ok()
-                .entity(new JsonObject()
-                    .put("token", token)
-                    .put("message", "Registration successful"))
-                .build());
+            .map(authTokens -> Response.ok(authTokens).build());
     }
 
     /**
@@ -54,10 +51,7 @@ public class AuthResource {
     @Path("/login")
     public Uni<Response> login(@Valid LoginRequest request) {
         return authService.loginUser(request.email, request.password)
-            .map(token -> Response.ok()
-                .entity(new JsonObject()
-                    .put("token", token))
-                .build());
+            .map(authTokens -> Response.ok(authTokens).build());
     }
 
     /**
@@ -156,6 +150,34 @@ public class AuthResource {
             .map(v -> Response.ok()
                 .entity(new JsonObject()
                     .put("message", "Password reset successfully"))
+                .build());
+    }
+
+    /**
+     * Refresh access token using refresh token
+     */
+    @POST
+    @Path("/refresh")
+    public Uni<Response> refreshToken(@Valid RefreshTokenRequest request) {
+        return authService.refreshAccessToken(request.refreshToken)
+            .map(accessToken -> Response.ok()
+                .entity(new JsonObject()
+                    .put("access_token", accessToken)
+                    .put("token_type", "Bearer")
+                    .put("expires_in", 900)) // 15 minutes in seconds
+                .build());
+    }
+
+    /**
+     * Revoke refresh token (logout)
+     */
+    @POST
+    @Path("/revoke")
+    public Uni<Response> revokeToken(@Valid RefreshTokenRequest request) {
+        return authService.revokeRefreshToken(request.refreshToken)
+            .map(v -> Response.ok()
+                .entity(new JsonObject()
+                    .put("message", "Token revoked successfully"))
                 .build());
     }
 }

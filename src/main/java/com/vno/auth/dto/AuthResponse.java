@@ -4,6 +4,7 @@ import java.util.UUID;
 
 public class AuthResponse {
     public String token;
+    public String refreshToken;
     public UserInfo user;
     public OrgInfo organization;
 

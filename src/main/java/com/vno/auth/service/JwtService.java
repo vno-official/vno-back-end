@@ -18,8 +18,8 @@ import java.util.UUID;
 @ApplicationScoped
 public class JwtService {
 
-    @ConfigProperty(name = "app.jwt.expiry-hours", defaultValue = "168")
-    int expiryHours;
+    @ConfigProperty(name = "app.jwt.access-token-expiry-minutes", defaultValue = "15")
+    int accessTokenExpiryMinutes;
 
     /**
      * Generate JWT with full multi-org claims (Reactive)
@@ -65,7 +65,7 @@ public class JwtService {
                 .claim("role", role.name())
                 .claim("orgs", orgsArray)
                 .groups(groups)
-                .expiresIn(Duration.ofHours(expiryHours))
+                .expiresIn(Duration.ofMinutes(accessTokenExpiryMinutes))
                 .sign();  // Sign with configured private key
     }
 

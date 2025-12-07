@@ -3,8 +3,13 @@ package com.vno.auth.service;
 import java.time.Instant;
 import java.util.UUID;
 
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+
+import com.vno.auth.dto.AuthTokens;
 import com.vno.auth.email.PasswordResetEmailTemplate;
+import com.vno.core.entity.Organization;
 import com.vno.core.entity.PasswordResetToken;
+import com.vno.core.entity.RefreshToken;
 import com.vno.core.entity.User;
 import com.vno.core.entity.UserOrganization;
 import com.vno.org.service.OrgBootstrapService;
@@ -15,18 +20,9 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.BadRequestException;
 
-// import com.vno.core.entity.Organization;
-// import com.vno.core.entity.User;
-// import com.vno.core.entity.UserOrganization;
-// import com.vno.org.service.OrgBootstrapService;
-// import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
-// import io.smallrye.mutiny.Uni;
-// import jakarta.enterprise.context.ApplicationScoped;
-// import jakarta.inject.Inject;
-// import jakarta.ws.rs.BadRequestException;
-
 /**
- * Reactive authentication service for username/password auth
+ * Authentication service handling user registration, login, and token management.
+ * Follows best practices for security and reactive programming.
  */
 @ApplicationScoped
 public class AuthService {
@@ -40,11 +36,17 @@ public class AuthService {
     @Inject
     EmailService emailService;
 
+    @ConfigProperty(name = "app.jwt.refresh-token-expiry-days", defaultValue = "7")
+    int refreshTokenExpiryDays;
+
+    // ==================== User Registration & Login ====================
+
     /**
-     * Register new user with username/password (Reactive)
+     * Register a new user with email/password and create their first organization.
+     * Returns both access token and refresh token.
      */
     @WithTransaction
-    public Uni<String> registerUser(String email, String password, String name) {
+    public Uni<AuthTokens> registerUser(String email, String password, String name) {
         return User.findByEmail(email)
             .flatMap(existingUser -> {
                 if (existingUser != null) {
@@ -60,25 +62,27 @@ public class AuthService {
                 
                 return user.persistAndFlush()
                     .flatMap(u -> orgBootstrapService.bootstrapOrganization(user))
-                    .flatMap(org -> jwtService.generateToken(user, org.id));
+                    .flatMap(org -> generateAuthTokens(user, org));
             });
     }
 
     /**
-     * Login with username/password (Reactive)
+     * Authenticate user with email/password.
+     * Returns both access token and refresh token.
      */
     @WithTransaction
-    public Uni<String> loginUser(String email, String password) {
+    public Uni<AuthTokens> loginUser(String email, String password) {
         return User.findByEmail(email)
             .onItem().ifNull().failWith(() -> 
                 new BadRequestException("Invalid email or password"))
             .onItem().ifNotNull().transformToUni(user -> {
+                // Verify password
                 if (!user.verifyPassword(password)) {
                     return Uni.createFrom().failure(
                         new BadRequestException("Invalid email or password"));
                 }
                 
-                // Get user's first organization
+                // Get or create organization
                 return user.hasAnyOrganization()
                     .flatMap(hasOrg -> {
                         if (!hasOrg) {
@@ -87,13 +91,94 @@ public class AuthService {
                         return user.getOrganizations()
                             .map(orgs -> orgs.get(0));
                     })
-                    .flatMap(org -> jwtService.generateToken(user, org.id));
+                    .flatMap(org -> generateAuthTokens(user, org));
+            });
+    }
+
+    // ==================== Token Management ====================
+
+    /**
+     * Generate both access and refresh tokens for a user in a specific organization.
+     */
+    private Uni<AuthTokens> generateAuthTokens(User user, Organization org) {
+        return createRefreshToken(user)
+            .flatMap(refreshToken -> 
+                jwtService.generateToken(user, org.id)
+                    .map(accessToken -> new AuthTokens(accessToken, refreshToken, user, org))
+            );
+    }
+
+    /**
+     * Create and persist a new refresh token.
+     */
+    private Uni<String> createRefreshToken(User user) {
+        String token = UUID.randomUUID().toString();
+        Instant expiresAt = Instant.now().plusSeconds(refreshTokenExpiryDays * 24 * 60 * 60);
+        
+        RefreshToken refreshToken = new RefreshToken();
+        refreshToken.user = user;
+        refreshToken.token = token;
+        refreshToken.expiresAt = expiresAt;
+        
+        return refreshToken.persistAndFlush()
+            .map(rt -> token);
+    }
+
+    /**
+     * Refresh access token using a valid refresh token.
+     * Returns a new access token while keeping the same refresh token.
+     */
+    @WithTransaction
+    public Uni<String> refreshAccessToken(String refreshTokenString) {
+        return RefreshToken.findValidToken(refreshTokenString)
+            .onItem().ifNull().failWith(() -> 
+                new BadRequestException("Invalid or expired refresh token"))
+            .flatMap(refreshToken -> {
+                // Update last used timestamp
+                refreshToken.updateLastUsed();
+                
+                UUID userId = refreshToken.user.id;
+                
+                return refreshToken.persistAndFlush()
+                    .flatMap(rt -> User.<User>findById(userId))
+                    .onItem().ifNull().failWith(() -> 
+                        new BadRequestException("User not found"))
+                    .flatMap(user -> 
+                        user.getOrganizations()
+                            .map(orgs -> orgs.isEmpty() ? null : orgs.get(0))
+                            .flatMap(org -> {
+                                if (org == null) {
+                                    return Uni.createFrom().failure(
+                                        new BadRequestException("User has no organizations"));
+                                }
+                                return jwtService.generateToken(user, org.id);
+                            })
+                    );
             });
     }
 
     /**
-     * Switch organization - return new JWT (Reactive)
+     * Revoke a refresh token (used for logout).
      */
+    @WithTransaction
+    public Uni<Void> revokeRefreshToken(String refreshTokenString) {
+        return RefreshToken.findByToken(refreshTokenString)
+            .onItem().ifNull().failWith(() -> 
+                new BadRequestException("Refresh token not found"))
+            .flatMap(refreshToken -> {
+                refreshToken.revoke();
+                return refreshToken.persistAndFlush()
+                    .replaceWith(Uni.createFrom().voidItem());
+            });
+    }
+
+    // ==================== Organization Switching ====================
+
+    /**
+     * Switch to a different organization.
+     * Returns a new access token for the target organization.
+     */
+    @WithTransaction
     public Uni<String> switchOrganization(UUID userId, UUID targetOrgId) {
         return User.<User>findById(userId)
             .onItem().ifNull().failWith(() -> 
@@ -110,8 +195,10 @@ public class AuthService {
             );
     }
 
+    // ==================== Password Management ====================
+
     /**
-     * Change user password (requires current password verification)
+     * Change user password (requires current password verification).
      */
     @WithTransaction
     public Uni<Void> changePassword(UUID userId, String currentPassword, String newPassword) {
@@ -133,7 +220,8 @@ public class AuthService {
     }
 
     /**
-     * Request password reset - generates token and sends email
+     * Request password reset - generates token and sends email.
+     * Silently succeeds even if email doesn't exist (prevents email enumeration).
      */
     @WithTransaction
     public Uni<Void> requestPasswordReset(String email) {
@@ -171,15 +259,15 @@ public class AuthService {
     }
 
     /**
-     * Reset password using valid token
+     * Reset password using a valid reset token.
      */
     @WithTransaction
     public Uni<Void> resetPassword(String token, String newPassword) {
         return PasswordResetToken.findValidToken(token)
             .onItem().ifNull().failWith(() -> 
                 new BadRequestException("Invalid or expired reset token"))
-            .flatMap(resetToken -> {
-                return User.<User>findById(resetToken.user.id)
+            .flatMap(resetToken -> 
+                User.<User>findById(resetToken.user.id)
                     .onItem().ifNull().failWith(() -> 
                         new BadRequestException("User not found"))
                     .flatMap(user -> {
@@ -190,8 +278,7 @@ public class AuthService {
                         return user.persistAndFlush()
                             .flatMap(u -> resetToken.persistAndFlush())
                             .replaceWith(Uni.createFrom().voidItem());
-                    });
-                // Get user and update password
-            });
+                    })
+            );
     }
 }
