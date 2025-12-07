@@ -99,12 +99,15 @@ public class AuthService {
 
     /**
      * Generate both access and refresh tokens for a user in a specific organization.
+     * Also fetches and returns complete user and organization data.
      */
-    private Uni<AuthTokens> generateAuthTokens(User user, Organization org) {
+    private Uni<AuthTokens> generateAuthTokens(User user, Organization currentOrg) {
         return createRefreshToken(user)
             .flatMap(refreshToken -> 
-                jwtService.generateToken(user, org.id)
-                    .map(accessToken -> new AuthTokens(accessToken, refreshToken, user, org))
+                jwtService.generateToken(user, currentOrg.id)
+                    .map(accessToken -> 
+                        new AuthTokens(accessToken, refreshToken, user, currentOrg)
+                    )
             );
     }
 
