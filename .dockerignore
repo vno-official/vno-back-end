@@ -1,5 +1,5 @@
 # Build artifacts
-build/
+# build/ - REMOVED: We need build/quarkus-app for Docker
 bin/
 .gradle/
 *.log

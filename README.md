@@ -1,146 +1,391 @@
+# VNO Backend
+
+A modern, multi-tenant SaaS backend built with Quarkus, featuring JWT authentication, refresh tokens, and organization-based access control.
+
+## 🚀 Features
+
+- **Multi-tenancy**: Organization-based isolation with tenant context
+- **Authentication & Authorization**: JWT with refresh tokens, role-based access control
+- **Reactive Architecture**: Built on Quarkus with Hibernate Reactive and Mutiny
+- **Modern Stack**: PostgreSQL, Redis, Reactive programming
+- **API Documentation**: Interactive Swagger UI
+- **Security**: BCrypt password hashing, token rotation, secure session management
+
+## 📋 Tech Stack
+
+- **Framework**: Quarkus 3.x
+- **Language**: Java 21
+- **Database**: PostgreSQL (with Hibernate Reactive)
+- **Cache**: Redis
+- **Authentication**: JWT (MicroProfile JWT), OAuth2 (Google)
+- **Email**: Resend
+- **Build**: Gradle (Kotlin DSL)
+- **Migration**: Flyway
+
+## 🏗️ Architecture
+
 ```
-src/main/java/com.vno/
-├── core/          ← TenantContext, PermissionService, AuditLog
-├── auth/          ← Login, MagicLink, JWT, Google OAuth
-├── org/           ← Organization, Member, Invite, Team
-├── workspace/     ← Workspace, Page tree, Trash
-├── editor/        ← Block, Version, Realtime gateway
-├── billing/       ← Stripe, Plan, Usage, Webhook
-├── file/          ← Upload, S3 presigned URL
-├── share/         ← Public link, Permission override
-├── search/        ← Sync job → Meilisearch
-└── admin/         ← Dashboard, Org lookup (chỉ Owner của bạn)
-```
-
-### core/ – Nền móng sống còn (Phase 1)
-- `TenantContext` (ThreadLocal + InheritableThreadLocal)
-- `CurrentTenantIdentifierResolver` (Hibernate multi-tenant)
-- `MultiTenantFilter` (đọc subdomain → set orgId)
-- `PermissionService.checkCanRead/WritePage()`
-- `AuditLogService.log(action, entity, metadata)`
-- Base entity `AbstractAuditingEntity` (createdBy, updatedBy, organizationId, deletedAt)
-- Global exception handler → JSON lỗi đẹp + audit log
-- Bucket4j rate limit fallback (khi Cloudflare không đủ)
-
-### auth/ — (Phase 1)
-- Google OAuth2 login (quark ուక-oidc)
-- Magic link (POST /auth/magic → GET: send email → GET /verify?token=)
-- JWT issue + refresh (contain org_id + role)
-- `AuthService.login(), switchOrg(orgId)`
-- `SecurityConfig` với @RolesAllowed + custom Voter (org role)
-- Passwordless hoàn toàn → users: có bảng users.password_hash = NULL
-
-### org/ — (Phase 2)
-- Organization CRUD (tạo subdomain slug: slug + random nếu trùng)
-- Invite (email + token + role + expires 7 ngày)
-- `MemberService.addMember(email, role)`
-- `OrganizationService.updateMemberRole(), removeMember(), transferOwnership():`
-- Invite token blacklist (Redis)
-- Team model (tối ưu sau này, MVP không cần)
-
-### workspace/ — (Phase 3)
-- Workspace CRUD + icon/cover
-- Page tree (parent_id + materialized path LTree)
-- `PageService.movePage(pageId, newParentId, newWorkspaceId)`
-- `PageService.duplicatePage(pageId)` → deep copy blocks
-- Trash (soft-delete + restore + cron xóa vĩnh viễn 30 ngày)
-- Page lock (chỉ owner mở khóa)
-
-### editor/ — (Phase 4 – nặng nhất)
-- Block entity (type + JSONB content + order_index)
-- `BlockService.saveBatch(pageId, List<BlockDto>)` → upsert + reorder
-- Version history (table block_version hoặc Y.js snapshot sau này)
-- Realtime gateway (WebSocket hoặc Server-Sent Events) → forward Y.js messages
-- `@mention` resolver (tìm user trong org)
-- `[[page]]` link resolver (search page title)
-
-### billing/ — (Phase 5 – cần tiền để sống)
-- Stripe Checkout Session + Customer Portal
-- Webhook handler (invoice.paid, subscription.updated, deleted)
-- `SubscriptionService.getCurrentPlan(orgId)`
-- Usage limiter (pages_count, members_count, storage_bytes)
-- Upgrade banner + limit gate (modal khi vượt)
-
-### file/ — (Phase 3+)
-- Presigned URL generator (R2/S3)
-- File metadata (size, mime, url)
-- Virus scan hook (ClamAV hoặc Cloudflare)
-- Auto-cleanup khi delete page/cover
-
-### share/ — (Phase 7 – viral)
-- `ShareService.createPublicLink(pageId, permission, password?, expires?)`
-- Public page endpoint `/s/{token}` (không cần login)
-- Password protection + rate limit (10 lần sai → block 1h)
-- Share analytics (view count, last viewed)
-
-### search/ — (Phase 8)
-- Sync job (cron mỗi 5 phút) → push page.title + block.text → Meilisearch
-- Index per org → lọc theo subdomain (: (: (Meilisearch filter)
-- Search API `/api/search?q=`
-
-### admin/ — (Chỉ bạn dùng – bật bằng IP hoặc secret header)
-- Dashboard: Tổng org, MRR tháng này, top 10 org usage
-- Org lookup: Gõ subdomain → xem tất cả (members, pages, logs, plan)
-- Manual override: Change plan, reset usage, delete org
-- Raw audit log search (by org_id, user_id, action)
-
-### Bonus: Các job cần có (Quarkus @Scheduled)
-```java
-@Scheduled(every = "1h")  void cleanupExpiredInvites();
-@Scheduled(every = "24h") void cleanupTrash();
-@Scheduled(every = "5m")  void syncToMeilisearch();
-@Scheduled(every = "24h") void calculateDailyUsage();
-@Scheduled(cron = "midnight:30 2 * JAN,APR,JUL,OCT *")
-void sendBillingReminder();
+├── src/main/java/com/vno
+│   ├── auth/              # Authentication & Authorization
+│   │   ├── dto/           # Request/Response DTOs
+│   │   ├── email/         # Email templates
+│   │   ├── service/       # Auth business logic
+│   │   └── web/           # REST endpoints
+│   ├── core/              # Core domain entities
+│   │   ├── entity/        # JPA entities (User, Organization, etc.)
+│   │   ├── security/      # Permission checks
+│   │   └── tenant/        # Multi-tenancy infrastructure
+│   ├── org/               # Organization management
+│   ├── workspace/         # Workspace management
+│   └── page/              # Page/Block management
+└── src/main/resources
+    ├── db/migration/      # Flyway migrations
+    └── application.yml    # Configuration
 ```
 
-### Tổng kết: Bạn chỉ cần làm đúng thứ tự này
-1. core + auth (2 tuần)
-2. org + workspace (2 tuần)
-3. billing (1 tuần) → có tiền
-4. editor cơ bản + file (3–4 tuần)
-5. share + admin + search (2–3 tuần)
-6. realtime (2 tuần)
+## 🔐 Authentication Flow
 
----
+### 1. Register/Login
+```bash
+POST /api/auth/login
+Content-Type: application/json
 
-## Local Development (Dev Mode)
+{
+  "email": "user@example.com",
+  "password": "Password123!"
+}
+```
+
+**Response:**
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "uuid...",
+  "expiresIn": 900,
+  "user": {
+    "id": "uuid",
+    "name": "John Doe",
+    "email": "user@example.com",
+    "avatarUrl": "https://..."
+  },
+  "tenant": {
+    "id": "uuid",
+    "name": "Company Name",
+    "plan": "pro"
+  },
+  "organization": {
+    "id": "uuid",
+    "name": "Main Office",
+    "code": "MAIN",
+    "role": "OWNER",
+    "permissions": ["*"]
+  }
+}
+```
+
+### 2. Use Access Token
+```bash
+GET /api/workspaces
+Authorization: Bearer {accessToken}
+```
+
+### 3. Refresh Access Token
+```bash
+POST /api/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "uuid..."
+}
+```
+
+**Response:**
+```json
+{
+  "access_token": "eyJ...",
+  "token_type": "Bearer",
+  "expires_in": 900
+}
+```
+
+### 4. Logout (Revoke Refresh Token)
+```bash
+POST /api/auth/revoke
+Content-Type: application/json
+
+{
+  "refreshToken": "uuid..."
+}
+```
+
+## 🔑 JWT Structure
+
+The access token contains complete user and organization data:
+
+```json
+{
+  "iss": "vno-backend",
+  "sub": "user-uuid",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "avatarUrl": "https://...",
+    "createdAt": "2024-..."
+  },
+  "currentOrganization": {
+    "id": "uuid",
+    "slug": "company",
+    "name": "Company Name",
+    "plan": "pro",
+    "createdAt": "2024-..."
+  },
+  "organizations": [
+    {
+      "id": "uuid",
+      "slug": "company",
+      "name": "Company Name",
+      "plan": "pro",
+      "createdAt": "2024-...",
+      "role": "OWNER"
+    }
+  ],
+  "role": "OWNER",
+  "groups": ["OWNER"],
+  "exp": 1234567890,
+  "iat": 1234567890
+}
+```
+
+## 🗄️ Database Schema
+
+### Core Entities
+
+**users**
+- `id` (UUID, PK)
+- `email` (VARCHAR, unique)
+- `password_hash` (VARCHAR)
+- `name` (VARCHAR)
+- `avatar_url` (VARCHAR)
+- `created_at` (TIMESTAMP)
+
+**organizations**
+- `id` (UUID, PK)
+- `name` (VARCHAR)
+- `slug` (VARCHAR, unique)
+- `plan` (VARCHAR)
+- `created_at` (TIMESTAMP)
+
+**user_organizations**
+- `id` (UUID, PK)
+- `user_id` (UUID, FK → users)
+- `organization_id` (UUID, FK → organizations)
+- `role` (VARCHAR: OWNER, ADMIN, MEMBER)
+
+**refresh_tokens**
+- `id` (UUID, PK)
+- `user_id` (UUID, FK → users)
+- `token` (VARCHAR, unique)
+- `expires_at` (TIMESTAMP)
+- `revoked_at` (TIMESTAMP)
+- `last_used_at` (TIMESTAMP)
+
+## ⚙️ Configuration
+
+### Environment Variables
+
+```bash
+# Database
+DATABASE_URL=jdbc:postgresql://localhost:5432/vno
+DATABASE_REACTIVE_URL=postgresql://localhost:5432/vno
+DATABASE_USERNAME=postgres
+DATABASE_PASSWORD=password
+
+# Redis
+REDIS_HOSTS=redis://localhost:6379
+
+# JWT
+APP_JWT_ACCESS_TOKEN_EXPIRY_MINUTES=15
+APP_JWT_REFRESH_TOKEN_EXPIRY_DAYS=7
+
+# Email (Resend)
+RESEND_API_KEY=re_...
+RESEND_FROM_EMAIL=noreply@example.com
+RESEND_FROM_NAME=VNO
+
+# Google OAuth (optional)
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+
+# App
+APP_DOMAIN=vno.com
+```
+
+### application.yml
+
+See [application.yml](src/main/resources/application.yml) for full configuration.
+
+## 🚦 Getting Started
 
 ### Prerequisites
-- JDK 21
-- Gradle 8+ installed (no wrapper in repo)
 
-### Run in dev mode
+- Java 21+
+- PostgreSQL 14+
+- Redis 7+
+- Gradle 8.5+
+
+### Local Development
+
+1. **Clone and setup**
 ```bash
-gradle quarkusDev
+git clone <repository>
+cd vno-backend
 ```
 
-Environment variables (optional for basic endpoints):
-- `PORT=8080` (default)
-- `APP_DOMAIN=vno.com`
-- `DATABASE_URL`, `REDIS_URL` can be left empty for Phase 0 endpoints.
-
-When started, the app listens on `http://localhost:8080`.
-
-### Test endpoints
-- Health check
+2. **Configure database**
 ```bash
-curl http://localhost:8080/api/health
+createdb vno
 ```
 
-- Wildcard subdomain echo (send Host header)
+3. **Set environment variables**
 ```bash
-curl -H "Host: hello.vno.com" http://localhost:8080/api/whoami
+cp .env.example .env
+# Edit .env with your values
 ```
 
-On Windows PowerShell, the same commands work with built-in `curl` alias.
+4. **Run development server**
+```bash
+./gradlew quarkusDev
+```
+
+The application will start on `http://localhost:8080`
+
+### API Documentation
+
+Visit Swagger UI: `http://localhost:8080/q/swagger-ui`
+
+### Health Check
+
+```bash
+curl http://localhost:8080/q/health
+```
+
+## 📝 API Endpoints
+
+### Authentication
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - Login with email/password
+- `POST /api/auth/refresh` - Refresh access token
+- `POST /api/auth/revoke` - Logout (revoke refresh token)
+- `POST /api/auth/change-password` - Change password (authenticated)
+- `POST /api/auth/request-reset` - Request password reset
+- `POST /api/auth/reset-password` - Reset password with token
+- `POST /api/auth/switch-org` - Switch to different organization
+
+### Organizations
+- `GET /api/orgs` - List user's organizations
+- `POST /api/orgs` - Create new organization
+- `GET /api/orgs/{id}` - Get organization details
+- `PUT /api/orgs/{id}` - Update organization
+- `DELETE /api/orgs/{id}` - Delete organization
+
+### Workspaces
+- `GET /api/workspaces` - List workspaces
+- `POST /api/workspaces` - Create workspace
+- `GET /api/workspaces/{id}` - Get workspace
+- `PUT /api/workspaces/{id}` - Update workspace
+- `DELETE /api/workspaces/{id}` - Delete workspace
+
+### Pages
+- `GET /api/workspaces/{id}/pages` - List pages in workspace
+- `POST /api/workspaces/{id}/pages` - Create page
+- `GET /api/pages/{id}` - Get page with blocks
+- `PUT /api/pages/{id}` - Update page
+- `DELETE /api/pages/{id}` - Delete page
+
+## 🔒 Security Features
+
+### Password Security
+- BCrypt hashing with work factor 12
+- Minimum 8 character requirement
+- Password history (prevents reuse)
+
+### Token Security
+- Short-lived access tokens (15 minutes)
+- Long-lived refresh tokens (7 days)
+- Server-side token storage
+- Token rotation on refresh
+- Revocation support
+
+### Multi-tenancy
+- Organization-based data isolation
+- Tenant context propagation
+- Row-level security via Hibernate filters
+
+### Authorization
+- Role-based access control (OWNER, ADMIN, MEMBER)
+- Permission checks for all operations
+- Private workspace enforcement
+
+## 🧪 Testing
 
 ### Run tests
 ```bash
-gradle test
+./gradlew test
 ```
 
-### Build runnable JAR (non-dev)
+### Test with Swagger UI
+1. Navigate to `http://localhost:8080/q/swagger-ui`
+2. Click "Authorize" button
+3. Login to get access token
+4. Paste token in authorization modal
+5. Test endpoints interactively
+
+### Manual Testing
+
+See [TESTING.md](TESTING.md) for detailed test scenarios.
+
+## 🐳 Docker
+
+### Build image
 ```bash
-gradle build -x test
+./gradlew build
+docker build -t vno-backend .
 ```
+
+### Run with Docker Compose
+```bash
+docker-compose up -d
+```
+
+## 📊 Monitoring
+
+### Health Checks
+- `/q/health` - Overall health
+- `/q/health/live` - Liveness probe
+- `/q/health/ready` - Readiness probe
+
+### Metrics
+- `/q/metrics` - Prometheus metrics
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open Pull Request
+
+## 📄 License
+
+This project is proprietary software.
+
+## 🔗 Links
+
+- [Quarkus Documentation](https://quarkus.io/guides/)
+- [API Documentation](http://localhost:8080/q/swagger-ui)
+- [Health Dashboard](http://localhost:8080/q/health-ui)
+
+## 📞 Support
+
+For support, email support@vno.com or join our Slack channel.
