@@ -29,9 +29,6 @@ public class TenantFilter implements ContainerRequestFilter, ContainerResponseFi
             return;
         }
 
-        System.out.println("🟡 TenantFilter: SecurityIdentity anonymous? " + securityIdentity.isAnonymous());
-        System.out.println("🟡 TenantFilter: Principal: " + securityIdentity.getPrincipal());
-        
         // Extract org_id from JWT claims via SecurityIdentity
         if (!securityIdentity.isAnonymous()) {
             // Try to get JsonWebToken from principal
@@ -44,11 +41,8 @@ public class TenantFilter implements ContainerRequestFilter, ContainerResponseFi
                         ? ((Number) orgIdClaim).longValue() 
                         : Long.parseLong(orgIdClaim.toString());
                     
-                    System.out.println("🔵 TenantFilter: Extracted org_id from JWT: " + orgId);
                     TenantContext.setOrganizationId(orgId);
-                    System.out.println("🔵 TenantFilter: Set TenantContext.organizationId to: " + TenantContext.getOrganizationId());
                 } else {
-                    System.out.println("� TenantFilter: org_id claim not present in JWT");
                 }
             } else {
                 // Try to get from attributes (for OIDC tokens)
@@ -58,14 +52,10 @@ public class TenantFilter implements ContainerRequestFilter, ContainerResponseFi
                         ? ((Number) orgIdAttr).longValue() 
                         : Long.parseLong(orgIdAttr.toString());
                     
-                    System.out.println("🔵 TenantFilter: Extracted org_id from attributes: " + orgId);
                     TenantContext.setOrganizationId(orgId);
                 } else {
-                    System.out.println("� TenantFilter: Principal is not JsonWebToken and no org_id attribute. Type: " + securityIdentity.getPrincipal().getClass().getName());
                 }
             }
-        } else {
-            System.out.println("🔴 TenantFilter: SecurityIdentity is anonymous");
         }
     }
 

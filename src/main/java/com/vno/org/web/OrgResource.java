@@ -7,11 +7,15 @@ import io.smallrye.mutiny.Uni;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import org.eclipse.microprofile.openapi.annotations.security.SecurityRequirement;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/org")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Authenticated
+@SecurityRequirement(name = "bearerAuth")
+@Tag(name = "Organization", description = "Organization management endpoints")
 public class OrgResource {
 
     @GET

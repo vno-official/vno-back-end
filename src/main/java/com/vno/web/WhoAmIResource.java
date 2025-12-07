@@ -12,8 +12,11 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.eclipse.microprofile.jwt.JsonWebToken;
+import org.eclipse.microprofile.openapi.annotations.security.SecurityRequirement;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/whoami")
+@Tag(name = "Utility", description = "Utility endpoints for health checks and diagnostics")
 public class WhoAmIResource {
 
     @Inject
@@ -37,6 +40,7 @@ public class WhoAmIResource {
     @Path("/me")
     @Produces(MediaType.APPLICATION_JSON)
     @Authenticated
+    @SecurityRequirement(name = "bearerAuth")
     public Response getMe(@Context SecurityContext securityContext) {
         String userId = jwt.getSubject();
         String email = jwt.getClaim("email");

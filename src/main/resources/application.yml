@@ -13,8 +13,14 @@ quarkus:
   
   smallrye-openapi:
     path: "/q/openapi"
+    info-title: "VNO Backend API"
+    info-version: "1.0.0"
+    info-description: "VNO Backend API with Bearer Token Authentication"
   swagger-ui:
     always-include: true
+    theme: "outline"
+    persist-authorization: true
+    ui-header: "VNO Backend API - Swagger UI"
   smallrye-health:
     root-path: "/q/health"
     

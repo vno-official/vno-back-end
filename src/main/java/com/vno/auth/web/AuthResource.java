@@ -12,10 +12,13 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.jwt.JsonWebToken;
+import org.eclipse.microprofile.openapi.annotations.security.SecurityRequirement;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/auth")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
+@Tag(name = "Authentication", description = "Authentication and authorization endpoints")
 public class AuthResource {
 
     @Inject
@@ -57,6 +60,7 @@ public class AuthResource {
     @POST
     @Path("/switch-org")
     @Authenticated
+    @SecurityRequirement(name = "bearerAuth")
     public Uni<Response> switchOrganization(@QueryParam("orgId") Long orgId) {
         if (orgId == null) {
             throw new BadRequestException("orgId is required");
@@ -76,6 +80,7 @@ public class AuthResource {
     @GET
     @Path("/me")
     @Authenticated
+    @SecurityRequirement(name = "bearerAuth")
     public Response getCurrentUser() {
         Long userId = Long.parseLong(jwt.getSubject());
         String email = jwt.getClaim("email");
