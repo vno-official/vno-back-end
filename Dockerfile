@@ -10,6 +10,9 @@ COPY gradlew ./
 COPY gradle ./gradle
 COPY build.gradle.kts settings.gradle.kts ./
 
+# Fix permissions for Linux
+RUN chmod +x gradlew
+
 # Pre-fetch dependencies (cached in Docker layer)
 RUN ./gradlew dependencies --no-daemon || true
 
