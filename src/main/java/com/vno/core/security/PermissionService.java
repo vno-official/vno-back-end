@@ -1,5 +1,7 @@
 package com.vno.core.security;
 
+import java.util.UUID;
+
 import com.vno.core.entity.Role;
 import com.vno.core.entity.Workspace;
 import com.vno.core.tenant.TenantContext;
@@ -20,7 +22,7 @@ public class PermissionService {
         }
 
         // Check tenant isolation
-        Long currentOrgId = TenantContext.getOrganizationId();
+        UUID currentOrgId = TenantContext.getOrganizationId();
         if (currentOrgId == null || !currentOrgId.equals(workspace.organizationId)) {
             return false;
         }

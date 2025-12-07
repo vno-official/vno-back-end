@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 @ApplicationScoped
 public class JwtService {
@@ -24,7 +25,7 @@ public class JwtService {
      * Generate JWT with full multi-org claims (Reactive)
      * Claims: user_id, email, org_id, role, orgs[]
      */
-    public Uni<String> generateToken(User user, Long currentOrgId) {
+    public Uni<String> generateToken(User user, UUID currentOrgId) {
         return UserOrganization.findRoleByUserAndOrg(user.id, currentOrgId)
             .onItem().ifNull().failWith(() -> 
                 new IllegalArgumentException("User does not belong to organization"))
@@ -39,12 +40,12 @@ public class JwtService {
             );
     }
 
-    private String buildJwtToken(User user, Long currentOrgId, Role role, List<UserOrganization> userOrgs) {
+    private String buildJwtToken(User user, UUID currentOrgId, Role role, List<UserOrganization> userOrgs) {
         // Build orgs array for org switcher
         JsonArray orgsArray = new JsonArray();
         for (UserOrganization uo : userOrgs) {
             JsonObject orgObj = new JsonObject()
-                .put("id", uo.organization.id)
+                .put("id", uo.organization.id.toString())
                 .put("name", uo.organization.name)
                 .put("subdomain", uo.organization.slug)
                 .put("role", uo.role.name());
@@ -57,10 +58,10 @@ public class JwtService {
 
         return Jwt.issuer("vno-backend")
                 .subject(user.id.toString())
-                .claim("user_id", user.id)
+                .claim("user_id", user.id.toString())
                 .claim("email", user.email)
                 .claim("name", user.name)
-                .claim("org_id", currentOrgId)
+                .claim("org_id", currentOrgId.toString())
                 .claim("role", role.name())
                 .claim("orgs", orgsArray)
                 .groups(groups)
@@ -71,7 +72,7 @@ public class JwtService {
     /**
      * Generate JWT for specific organization (used for org switching)
      */
-    public Uni<String> generateTokenForOrg(User user, Long orgId) {
+    public Uni<String> generateTokenForOrg(User user, UUID orgId) {
         return UserOrganization.userBelongsToOrg(user.id, orgId)
             .flatMap(belongs -> {
                 if (!belongs) {

@@ -11,6 +11,9 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+
+import java.util.UUID;
+
 import org.eclipse.microprofile.openapi.annotations.security.SecurityRequirement;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
@@ -24,7 +27,7 @@ public class WorkspaceResource {
 
     @GET
     public Uni<Response> listWorkspaces() {
-        Long orgId = TenantContext.getOrganizationId();
+        UUID orgId = TenantContext.getOrganizationId();
         if (orgId == null) {
             return Uni.createFrom().item(Response.status(Response.Status.BAD_REQUEST)
                 .entity("{\"error\":\"No organization context\"}")
@@ -38,7 +41,7 @@ public class WorkspaceResource {
     @POST
     @WithTransaction
     public Uni<Response> createWorkspace(WorkspaceCreateRequest request, @Context SecurityContext securityContext) {
-        Long orgId = TenantContext.getOrganizationId();
+        UUID orgId = TenantContext.getOrganizationId();
         if (orgId == null) {
             return Uni.createFrom().item(Response.status(Response.Status.BAD_REQUEST)
                 .entity("{\"error\":\"No organization context\"}")

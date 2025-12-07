@@ -1,18 +1,25 @@
 package com.vno.core.tenant;
 
-import io.quarkus.hibernate.reactive.panache.PanacheEntity;
+import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
 import jakarta.persistence.*;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.ParamDef;
 
-@MappedSuperclass
-@FilterDef(name = "organizationFilter", parameters = @ParamDef(name = "organizationId", type = Long.class))
-@Filter(name = "organizationFilter", condition = "organization_id = :organizationId")
-public abstract class TenantEntity extends PanacheEntity {
+import java.util.UUID;
 
-    @Column(name = "organization_id", nullable = false)
-    public Long organizationId;
+@MappedSuperclass
+@FilterDef(name = "organizationFilter", parameters = @ParamDef(name = "organizationId", type = UUID.class))
+@Filter(name = "organizationFilter", condition = "organization_id = :organizationId")
+public abstract class TenantEntity extends PanacheEntityBase {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(columnDefinition = "uuid")
+    public UUID id;
+
+    @Column(name = "organization_id", nullable = false, columnDefinition = "uuid")
+    public UUID organizationId;
 
     @PrePersist
     public void setOrganizationIdFromContext() {

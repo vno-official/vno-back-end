@@ -4,6 +4,7 @@ import com.vno.core.tenant.TenantEntity;
 import io.smallrye.mutiny.Uni;
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.util.UUID;
 
 @Entity
 @Table(name = "workspaces")
@@ -38,12 +39,12 @@ public class Workspace extends TenantEntity {
 
     // Reactive repository methods
     @com.fasterxml.jackson.annotation.JsonIgnore
-    public static Uni<Workspace> findByIdAndOrg(Long id, Long orgId) {
+    public static Uni<Workspace> findByIdAndOrg(UUID id, UUID orgId) {
         return find("id = ?1 and organizationId = ?2 and deletedAt is null", id, orgId).firstResult();
     }
 
     @com.fasterxml.jackson.annotation.JsonIgnore
-    public static Uni<Workspace> findPrivateWorkspace(Long orgId, Long userId) {
+    public static Uni<Workspace> findPrivateWorkspace(UUID orgId, UUID userId) {
         return find("organizationId = ?1 and createdBy.id = ?2 and isSystem = true and name = 'Private' and deletedAt is null", 
                     orgId, userId).firstResult();
     }

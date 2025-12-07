@@ -4,6 +4,7 @@ import com.vno.core.tenant.TenantEntity;
 import io.smallrye.mutiny.Uni;
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.util.UUID;
 
 @Entity
 @Table(name = "pages")
@@ -59,7 +60,7 @@ public class Page extends TenantEntity {
 
     // Reactive repository methods
     @com.fasterxml.jackson.annotation.JsonIgnore
-    public static Uni<Page> findByIdAndOrg(Long id, Long orgId) {
+    public static Uni<Page> findByIdAndOrg(UUID id, UUID orgId) {
         return find("id = ?1 and organizationId = ?2 and deletedAt is null", id, orgId).firstResult();
     }
 

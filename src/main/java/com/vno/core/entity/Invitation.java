@@ -1,13 +1,19 @@
 package com.vno.core.entity;
 
-import io.quarkus.hibernate.reactive.panache.PanacheEntity;
+import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
 import io.smallrye.mutiny.Uni;
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.util.UUID;
 
 @Entity
 @Table(name = "invitations")
-public class Invitation extends PanacheEntity {
+public class Invitation extends PanacheEntityBase {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(columnDefinition = "uuid")
+    public UUID id;
 
     @ManyToOne
     @JoinColumn(name = "organization_id", nullable = false)

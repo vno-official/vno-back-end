@@ -12,6 +12,9 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+
+import java.util.UUID;
+
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.eclipse.microprofile.openapi.annotations.security.SecurityRequirement;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
@@ -31,7 +34,7 @@ public class BlockResource {
      * Get all blocks for a page (Reactive)
      */
     @GET
-    public Uni<Response> getBlocksByPage(@QueryParam("pageId") Long pageId) {
+    public Uni<Response> getBlocksByPage(@QueryParam("pageId") UUID pageId) {
         if (pageId == null) {
             throw new BadRequestException("pageId is required");
         }
@@ -102,7 +105,7 @@ public class BlockResource {
     @Path("/batch")
     @WithTransaction
     public Uni<Response> batchSaveBlocks(JsonObject payload) {
-        Long pageId = payload.getLong("pageId");
+        UUID pageId = UUID.fromString(payload.getString("pageId"));
         JsonArray blocksArray = payload.getJsonArray("blocks");
         Long userId = Long.parseLong(jwt.getSubject());
 

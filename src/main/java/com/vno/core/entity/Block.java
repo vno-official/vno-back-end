@@ -2,10 +2,10 @@ package com.vno.core.entity;
 
 import com.vno.core.tenant.TenantEntity;
 import io.smallrye.mutiny.Uni;
-import io.vertx.core.json.JsonObject;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -49,6 +49,7 @@ public class Block extends TenantEntity {
 
     public enum BlockType {
         TEXT,
+        HEADING,       // Generic heading with level in content JSON
         HEADING_1,
         HEADING_2,
         HEADING_3,
@@ -63,17 +64,17 @@ public class Block extends TenantEntity {
 
     // Reactive finder methods
     @com.fasterxml.jackson.annotation.JsonIgnore
-    public static Uni<List<Block>> findByPage(Long pageId) {
+    public static Uni<List<Block>> findByPage(UUID pageId) {
         return list("page.id = ?1 order by orderIndex", pageId);
     }
 
     @com.fasterxml.jackson.annotation.JsonIgnore
-    public static Uni<Void> deleteByPage(Long pageId) {
+    public static Uni<Void> deleteByPage(UUID pageId) {
         return delete("page.id", pageId).replaceWithVoid();
     }
 
     @com.fasterxml.jackson.annotation.JsonIgnore
-    public static Uni<Integer> getMaxOrderIndex(Long pageId) {
+    public static Uni<Integer> getMaxOrderIndex(UUID pageId) {
         return find("select max(orderIndex) from Block where page.id = ?1", pageId)
             .project(Integer.class)
             .singleResult()

@@ -1,14 +1,16 @@
 package com.vno.core.tenant;
 
+import java.util.UUID;
+
 public class TenantContext {
     
-    private static final ThreadLocal<Long> currentOrganizationId = new ThreadLocal<>();
+    private static final ThreadLocal<UUID> currentOrganizationId = new ThreadLocal<>();
     
-    public static void setOrganizationId(Long orgId) {
+    public static void setOrganizationId(UUID orgId) {
         currentOrganizationId.set(orgId);
     }
     
-    public static Long getOrganizationId() {
+    public static UUID getOrganizationId() {
         System.out.println(currentOrganizationId.get());
         return currentOrganizationId.get();
     }

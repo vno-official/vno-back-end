@@ -12,6 +12,7 @@ import jakarta.ws.rs.ext.Provider;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 
 import java.io.IOException;
+import java.util.UUID;
 
 @Provider
 @Priority(Priorities.AUTHENTICATION + 1) // Run after authentication
@@ -37,23 +38,17 @@ public class TenantFilter implements ContainerRequestFilter, ContainerResponseFi
                 
                 if (jwt.claim("org_id").isPresent()) {
                     Object orgIdClaim = jwt.claim("org_id").get();
-                    Long orgId = orgIdClaim instanceof Number 
-                        ? ((Number) orgIdClaim).longValue() 
-                        : Long.parseLong(orgIdClaim.toString());
+                    UUID orgId = UUID.fromString(orgIdClaim.toString());
                     
                     TenantContext.setOrganizationId(orgId);
-                } else {
                 }
             } else {
                 // Try to get from attributes (for OIDC tokens)
                 Object orgIdAttr = securityIdentity.getAttribute("org_id");
                 if (orgIdAttr != null) {
-                    Long orgId = orgIdAttr instanceof Number 
-                        ? ((Number) orgIdAttr).longValue() 
-                        : Long.parseLong(orgIdAttr.toString());
+                    UUID orgId = UUID.fromString(orgIdAttr.toString());
                     
                     TenantContext.setOrganizationId(orgId);
-                } else {
                 }
             }
         }

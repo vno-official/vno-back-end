@@ -1,14 +1,20 @@
 package com.vno.core.entity;
 
-import io.quarkus.hibernate.reactive.panache.PanacheEntity;
+import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
 import io.smallrye.mutiny.Uni;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table(name = "organizations")
-public class Organization extends PanacheEntity {
+public class Organization extends PanacheEntityBase {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(columnDefinition = "uuid")
+    public UUID id;
 
     @Column(nullable = false)
     public String name;
@@ -43,7 +49,7 @@ public class Organization extends PanacheEntity {
 
     // Multi-org support methods (reactive)
     @com.fasterxml.jackson.annotation.JsonIgnore
-    public Uni<Role> getUserRole(Long userId) {
+    public Uni<Role> getUserRole(UUID userId) {
         return UserOrganization.findRoleByUserAndOrg(userId, this.id);
     }
 
@@ -57,7 +63,7 @@ public class Organization extends PanacheEntity {
     }
 
     @com.fasterxml.jackson.annotation.JsonIgnore
-    public Uni<Boolean> hasUser(Long userId) {
+    public Uni<Boolean> hasUser(UUID userId) {
         return UserOrganization.userBelongsToOrg(userId, this.id);
     }
 }

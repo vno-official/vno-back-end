@@ -12,6 +12,9 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+
+import java.util.UUID;
+
 import org.eclipse.microprofile.openapi.annotations.security.SecurityRequirement;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
@@ -24,8 +27,8 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 public class PageResource {
 
     @GET
-    public Uni<Response> listPages(@QueryParam("workspaceId") Long workspaceId) {
-        Long orgId = TenantContext.getOrganizationId();
+    public Uni<Response> listPages(@QueryParam("workspaceId") UUID workspaceId) {
+        UUID orgId = TenantContext.getOrganizationId();
         if (orgId == null) {
             return Uni.createFrom().item(Response.status(Response.Status.BAD_REQUEST)
                 .entity("{\"error\":\"No organization context\"}")
@@ -44,7 +47,7 @@ public class PageResource {
     @POST
     @WithTransaction
     public Uni<Response> createPage(PageCreateRequest request, @Context SecurityContext securityContext) {
-        Long orgId = TenantContext.getOrganizationId();
+        UUID orgId = TenantContext.getOrganizationId();
         if (orgId == null) {
             return Uni.createFrom().item(Response.status(Response.Status.BAD_REQUEST)
                 .entity("{\"error\":\"No organization context\"}")
@@ -83,8 +86,8 @@ public class PageResource {
     @DELETE
     @Path("/{id}")
     @WithTransaction
-    public Uni<Response> deletePage(@PathParam("id") Long id) {
-        Long orgId = TenantContext.getOrganizationId();
+    public Uni<Response> deletePage(@PathParam("id") UUID id) {
+        UUID orgId = TenantContext.getOrganizationId();
         if (orgId == null) {
             return Uni.createFrom().item(Response.status(Response.Status.BAD_REQUEST)
                 .entity("{\"error\":\"No organization context\"}")
@@ -101,9 +104,9 @@ public class PageResource {
     }
 
     public static class PageCreateRequest {
-        public Long workspaceId;
+        public UUID workspaceId;
         public String title;
         public String iconEmoji;
-        public Long parentPageId;
+        public UUID parentPageId;
     }
 }

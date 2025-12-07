@@ -53,6 +53,9 @@ dependencies {
     
     // BCrypt for password hashing
     implementation("org.mindrot:jbcrypt:0.4")
+    
+    // UUID v7 generation
+    implementation("com.fasterxml.uuid:java-uuid-generator:5.1.0")
 
     testImplementation("io.quarkus:quarkus-junit5")
     testImplementation("io.rest-assured:rest-assured")

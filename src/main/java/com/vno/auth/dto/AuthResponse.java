@@ -1,19 +1,21 @@
 package com.vno.auth.dto;
 
+import java.util.UUID;
+
 public class AuthResponse {
     public String token;
     public UserInfo user;
     public OrgInfo organization;
 
     public static class UserInfo {
-        public Long id;
+        public UUID id;
         public String email;
         public String name;
         public String avatarUrl;
     }
 
     public static class OrgInfo {
-        public Long id;
+        public UUID id;
         public String slug;
         public String name;
     }
