@@ -45,4 +45,6 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
 # Run application
 ENTRYPOINT ["java", \
     "-Djava.util.logging.manager=org.jboss.logmanager.LogManager", \
+    "-Dquarkus.http.host=0.0.0.0", \
+    "-Dquarkus.http.port=${PORT:8080}", \
     "-jar", "quarkus-run.jar"]
