@@ -1,6 +1,6 @@
 # Quarkus configuration (YAML)
 quarkus:
-  host: 0.0.0.0
+  # host: 0.0.0.0
   http:
     port: ${PORT:8080}
     root-path: "/"
@@ -70,14 +70,14 @@ quarkus:
     authentication:
       redirect-path: /auth/google/callback
       scopes: openid,email,profile
-  smallrye-jwt:
-    enabled: true
-    
+
 # MicroProfile JWT Configuration
 mp:
   jwt:
     verify:
       issuer: vno-backend
+      publickey:
+        location: ${JWT_PUBLIC_KEY_LOCATION:classpath:publickey.pem}
 
 # App domain for subdomain parsing
 app:
@@ -91,3 +91,10 @@ resend:
   api-key: ${RESEND_API_KEY:re_8GvmMDRp_9hGBUY3bhACkdrozRTzyc1cs}
   from-email: ${RESEND_FROM_EMAIL:vno-back-end.fly.dev}
   from-name: ${RESEND_FROM_NAME:VNO}
+
+# SmallRye JWT Configuration (Root Level)
+smallrye:
+  jwt:
+    sign:
+      key:
+        location: ${JWT_KEY_LOCATION:classpath:privatekey.pem}

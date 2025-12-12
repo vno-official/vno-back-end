@@ -81,7 +81,7 @@ Scope: Phase 0 → 1 aligned with GOAL.md
 - [x] Indices and FKs created
 
 ### Tenant Isolation
-- [x] Parse subdomain to resolve org slug
+- [~] Parse subdomain to resolve org slug (REMOVED: JWT-only)
 - [x] Lookup org_id by slug, set TenantContext per request
 - [x] Base entity includes organization_id
 - [x] Apply Hibernate filter/@Where to enforce org_id automatically

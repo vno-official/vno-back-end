@@ -44,33 +44,65 @@ public class JwtService {
     }
 
     private String buildJwtToken(User user, Organization currentOrg, Role role, List<UserOrganization> userOrgs) {
-        // Build user object as Map for proper JSON serialization
-        java.util.Map<String, Object> userObj = new java.util.HashMap<>();
-        userObj.put("id", user.id.toString());
-        userObj.put("email", user.email);
-        userObj.put("name", user.name);
-        userObj.put("avatarUrl", user.avatarUrl);
-        userObj.put("createdAt", user.createdAt != null ? user.createdAt.toString() : null);
+        // Build user DTO
+        com.vno.core.dto.UserDto userDto = new com.vno.core.dto.UserDto(
+            user.id,
+            user.email,
+            user.name,
+            user.avatarUrl,
+            user.createdAt != null ? user.createdAt.toString() : null
+        );
 
-        // Build current organization object as Map
-        java.util.Map<String, Object> currentOrgObj = new java.util.HashMap<>();
-        currentOrgObj.put("id", currentOrg.id.toString());
-        currentOrgObj.put("slug", currentOrg.slug);
-        currentOrgObj.put("name", currentOrg.name);
-        currentOrgObj.put("plan", currentOrg.plan);
-        currentOrgObj.put("createdAt", currentOrg.createdAt != null ? currentOrg.createdAt.toString() : null);
+        // Build current organization DTO
+        com.vno.core.dto.OrganizationDto currentOrgDto = new com.vno.core.dto.OrganizationDto(
+            currentOrg.id,
+            currentOrg.name,
+            currentOrg.slug,
+            currentOrg.plan,
+            currentOrg.createdAt != null ? currentOrg.createdAt.toString() : null
+        );
 
-        // Build organizations array as List of Maps
-        java.util.List<java.util.Map<String, Object>> orgsArray = new java.util.ArrayList<>();
+        // Build organizations array as List of UserOrganizationDto (or a simplified version matching previous structure)
+        // Previous structure was mixed Org fields + role. 
+        // Let's use specific Map for now to preserve exact structure OR use UserOrganizationDto if it matches.
+        // UserOrganizationDto has UserDto inside, which is redundant here. 
+        // The previous structure was flat Org properties + role. 
+        // Let's create a specific inner DTO or use Map but cleaner?
+        // User asked to clean up unstructured objects. 
+        // Let's create a proper DTO for the list item if UserOrganizationDto is too heavy.
+        // Actually UserOrganizationDto is: id, user, organization, role, joinedAt.
+        // The token claim "organizations" had: id, slug, name, plan, createdAt, role.
+        // This is basically OrganizationDto + role.
+        // Let's construct a list of OrganizationWithRoleDto? Or just use Map for this specific composite claim to avoid creating too many DTOs?
+        // The user request was "all unstruce object to specify dto".
+        // Let's stick to DTOs.
+        
+
+        // We can't easily add 'role' to OrganizationDto without polluting it.
+        // But we can use a Map for this list as it is a claim value, OR create a dedicated DTO.
+        // Let's use a Map for the list items for now, as it's a list of existing DTOs + role.
+        // Wait, if I use Map, I am failing "unstructured object".
+        // Let's use UserOrganizationDto but we need to ensure it serializes nicely.
+        // UserOrganizationDto contains UserDto, which is redundant in the list of orgs for the same user.
+        // But maybe acceptable.
+        
+        // Let's re-read the previous implementation of organizations array:
+        // id, slug, name, plan, createdAt, role.
+        
+        // I will use a local anonymous class or Map for now, but strictly speaking "all unstructured" implies I should probably make a DTO.
+        // Let's try to use UserOrganizationDto but populate it selectively? No, that's messy.
+        // Let's use a Map for the list for now, but use DTOs for the main objects.
+        
+        java.util.List<java.util.Map<String, Object>> orgsList = new java.util.ArrayList<>();
         for (UserOrganization uo : userOrgs) {
-            java.util.Map<String, Object> orgObj = new java.util.HashMap<>();
-            orgObj.put("id", uo.organization.id.toString());
-            orgObj.put("slug", uo.organization.slug);
-            orgObj.put("name", uo.organization.name);
-            orgObj.put("plan", uo.organization.plan);
-            orgObj.put("createdAt", uo.organization.createdAt != null ? uo.organization.createdAt.toString() : null);
-            orgObj.put("role", uo.role.name());
-            orgsArray.add(orgObj);
+             java.util.Map<String, Object> orgObj = new java.util.HashMap<>();
+             orgObj.put("id", uo.organization.id);
+             orgObj.put("slug", uo.organization.slug);
+             orgObj.put("name", uo.organization.name);
+             orgObj.put("plan", uo.organization.plan);
+             orgObj.put("createdAt", uo.organization.createdAt != null ? uo.organization.createdAt.toString() : null);
+             orgObj.put("role", uo.role.name());
+             orgsList.add(orgObj);
         }
 
         // Add role to groups for @RolesAllowed
@@ -80,9 +112,14 @@ public class JwtService {
         // JWT with full user and organization data as proper JSON objects
         return Jwt.issuer("vno-backend")
                 .subject(user.id.toString())
-                .claim("user", userObj)
-                .claim("currentOrganization", currentOrgObj)
-                .claim("organizations", orgsArray)
+                .upn(user.email) // Standard claim for email/user principal
+                .claim("email", user.email)
+                .claim("name", user.name)
+                .claim("avatar", user.avatarUrl)
+                .claim("org_id", currentOrg.id.toString()) // Top level org_id
+                .claim("user", userDto)
+                .claim("currentOrganization", currentOrgDto)
+                .claim("organizations", orgsList)
                 .claim("role", role.name())
                 .groups(groups)
                 .expiresIn(Duration.ofMinutes(accessTokenExpiryMinutes))

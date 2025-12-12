@@ -9,7 +9,6 @@ import com.vno.auth.dto.ResetPasswordRequest;
 import com.vno.auth.service.AuthService;
 import io.quarkus.security.Authenticated;
 import io.smallrye.mutiny.Uni;
-import io.vertx.core.json.JsonObject;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
@@ -68,10 +67,7 @@ public class AuthResource {
 
         UUID userId = UUID.fromString(jwt.getSubject());
         return authService.switchOrganization(userId, orgId)
-            .map(token -> Response.ok()
-                .entity(new JsonObject()
-                    .put("token", token))
-                .build());
+            .map(token -> Response.ok(new com.vno.core.dto.TokenDto(token)).build());
     }
 
     /**
@@ -82,18 +78,17 @@ public class AuthResource {
     @Authenticated
     @SecurityRequirement(name = "bearerAuth")
     public Response getCurrentUser() {
-        Long userId = Long.parseLong(jwt.getSubject());
+        String userIdStr = jwt.getSubject();
+        UUID userId = userIdStr != null ? UUID.fromString(userIdStr) : null;
         String email = jwt.getClaim("email");
-        Long currentOrgId = jwt.getClaim("org_id");
+        String name = jwt.getClaim("name");
+        
+        String orgIdStr = jwt.getClaim("org_id");
+        UUID currentOrgId = orgIdStr != null ? UUID.fromString(orgIdStr) : null;
+        
         String currentRole = jwt.getClaim("role");
 
-        return Response.ok()
-            .entity(new JsonObject()
-                .put("user_id", userId)
-                .put("email", email)
-                .put("current_org_id", currentOrgId)
-                .put("current_role", currentRole))
-            .build();
+        return Response.ok(new com.vno.core.dto.UserContextDto(userId, email, name, currentOrgId, currentRole)).build();
     }
 
     /**
@@ -116,10 +111,7 @@ public class AuthResource {
 
         UUID userId = UUID.fromString(jwt.getSubject());
         return authService.changePassword(userId, request.currentPassword, request.newPassword)
-            .map(v -> Response.ok()
-                .entity(new JsonObject()
-                    .put("message", "Password changed successfully"))
-                .build());
+            .map(v -> Response.ok(new com.vno.core.dto.MessageDto("Password changed successfully")).build());
     }
 
     /**
@@ -129,10 +121,7 @@ public class AuthResource {
     @Path("/request-reset")
     public Uni<Response> requestPasswordReset(@Valid RequestPasswordResetRequest request) {
         return authService.requestPasswordReset(request.email)
-            .map(v -> Response.ok()
-                .entity(new JsonObject()
-                    .put("message", "If the email exists, a password reset link has been sent"))
-                .build());
+            .map(v -> Response.ok(new com.vno.core.dto.MessageDto("If the email exists, a password reset link has been sent")).build());
     }
 
     /**
@@ -147,10 +136,7 @@ public class AuthResource {
         }
 
         return authService.resetPassword(request.token, request.newPassword)
-            .map(v -> Response.ok()
-                .entity(new JsonObject()
-                    .put("message", "Password reset successfully"))
-                .build());
+            .map(v -> Response.ok(new com.vno.core.dto.MessageDto("Password reset successfully")).build());
     }
 
     /**
@@ -160,12 +146,9 @@ public class AuthResource {
     @Path("/refresh")
     public Uni<Response> refreshToken(@Valid RefreshTokenRequest request) {
         return authService.refreshAccessToken(request.refreshToken)
-            .map(accessToken -> Response.ok()
-                .entity(new JsonObject()
-                    .put("access_token", accessToken)
-                    .put("token_type", "Bearer")
-                    .put("expires_in", 900)) // 15 minutes in seconds
-                .build());
+            .map(accessToken -> Response.ok(
+                new com.vno.core.dto.AccessTokenDto(accessToken, 900)
+            ).build());
     }
 
     /**
@@ -175,9 +158,6 @@ public class AuthResource {
     @Path("/revoke")
     public Uni<Response> revokeToken(@Valid RefreshTokenRequest request) {
         return authService.revokeRefreshToken(request.refreshToken)
-            .map(v -> Response.ok()
-                .entity(new JsonObject()
-                    .put("message", "Token revoked successfully"))
-                .build());
+            .map(v -> Response.ok(new com.vno.core.dto.MessageDto("Token revoked successfully")).build());
     }
 }

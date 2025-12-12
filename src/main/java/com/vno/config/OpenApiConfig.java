@@ -20,7 +20,7 @@ import jakarta.ws.rs.core.Application;
         )
     ),
     servers = {
-        @Server(url = "http://0.0.0.0:8080", description = "Development Server"),
+        @Server(url = "http://localhost:8080", description = "Development Server"),
         @Server(url = "/", description = "Current Server")
     }
 )

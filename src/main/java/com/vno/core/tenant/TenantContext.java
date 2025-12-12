@@ -11,7 +11,7 @@ public class TenantContext {
     }
     
     public static UUID getOrganizationId() {
-        System.out.println(currentOrganizationId.get());
+        System.out.println("=>>>>>>>>>> currentOrganizationId: " + currentOrganizationId.get());
         return currentOrganizationId.get();
     }
     
